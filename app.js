@@ -1,9 +1,247 @@
-const audio=document.querySelector("#audio"),input=document.querySelector("#file-input"),list=document.querySelector("#track-list"),queueList=document.querySelector("#queue-list"),tracks=[];let queue=[],current=-1;const $=id=>document.getElementById(id),time=n=>Number.isFinite(n)?Math.floor(n/60)+":"+String(Math.floor(n%60)).padStart(2,"0"):"0:00";
-function renderTracks(){$("track-count").textContent=tracks.length+" ТРЕКОВ";if(!tracks.length){list.innerHTML='<div class="empty-state"><span>♫</span><b>Пока здесь тихо</b><small>Добавь MP3, WAV или другой аудиофайл</small></div>';return}list.innerHTML="";tracks.forEach((t,i)=>{const row=document.createElement("div");row.className="track-item";row.innerHTML='<span class="track-num"></span><div class="track-name"><b></b><small></small></div><button class="small-action" title="В очередь">＋</button><button class="small-action" title="Играть">▶</button>';row.querySelector(".track-num").textContent=String(i+1).padStart(2,"0");row.querySelector("b").textContent=t.name.replace(/\.[^.]+$/,"");row.querySelector("small").textContent=(t.size/1048576).toFixed(1)+" MB";row.querySelectorAll("button")[0].onclick=()=>{queue.push(i);renderQueue()};row.querySelectorAll("button")[1].onclick=()=>playTrack(i);list.append(row)})}
-function renderQueue(){if(!queue.length){queueList.innerHTML='<div class="empty-queue">Очередь пока пуста</div>';return}queueList.innerHTML="";queue.forEach((idx,pos)=>{const row=document.createElement("div");row.className="queue-item";const num=document.createElement("span");num.textContent=String(pos+1).padStart(2,"0");const name=document.createElement("div");name.style.flex="1";name.textContent=tracks[idx]?.name||"Трек";const remove=document.createElement("button");remove.className="small-action";remove.textContent="×";remove.onclick=()=>{queue.splice(pos,1);renderQueue()};row.append(num,name,remove);queueList.append(row)})}
-function playTrack(i){if(!tracks[i])return;current=i;audio.src=tracks[i].url;audio.play().catch(()=>{});$("now-title").textContent=tracks[i].name.replace(/\.[^.]+$/,"");$("now-artist").textContent="FRESHEN MUSIC RADIO · LOCAL FILE";$("play-state").textContent="LOCAL PREVIEW";$("play").textContent="Ⅱ"}
-input.onchange=e=>{[...e.target.files].forEach(file=>tracks.push({name:file.name,size:file.size,url:URL.createObjectURL(file)}));renderTracks();e.target.value=""};
-$("play").onclick=()=>{if(!tracks.length){input.click();return}if(audio.paused){if(current<0)playTrack(queue.length?queue.shift():0);else audio.play();$("play").textContent="Ⅱ"}else{audio.pause();$("play").textContent="▶"}};
-$("next").onclick=()=>{if(queue.length)playTrack(queue.shift());else if(current<tracks.length-1)playTrack(current+1);renderQueue()};$("prev").onclick=()=>playTrack(Math.max(0,current-1));$("clear-queue").onclick=()=>{queue=[];renderQueue()};$("volume").oninput=e=>audio.volume=Number(e.target.value);
-audio.ontimeupdate=()=>{$("elapsed").textContent=time(audio.currentTime);$("duration").textContent=time(audio.duration);if(Number.isFinite(audio.duration))$("seek").value=audio.currentTime/audio.duration*100};$("seek").oninput=e=>{if(Number.isFinite(audio.duration))audio.currentTime=Number(e.target.value)/100*audio.duration};
-audio.onended=()=>{if(queue.length)playTrack(queue.shift());else if(current<tracks.length-1)playTrack(current+1);else{$("play").textContent="▶";$("play-state").textContent="ВОСПРОИЗВЕДЕНИЕ ЗАВЕРШЕНО"}renderQueue()};renderTracks();renderQueue();
+﻿// FRESHEN MUSIC RADIO 0.2
+// Используй только Publishable key. Никогда не вставляй service_role или secret key.
+const SUPABASE_URL = "https://dyuybnfbtcvtkkyauqmd.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iqNXYa5VEjr81zOaQvS0uQ_QXyvV-2o";
+const BUCKET = "tracks";
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
+
+const $ = id => document.getElementById(id);
+const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+const audio = $("audio-player");
+let tracks = [];
+let currentIndex = -1;
+let currentUser = null;
+let toastTimer;
+
+function toast(message) {
+  const el = $("toast");
+  el.textContent = message;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
+}
+function formatTime(seconds) {
+  if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+  return `${Math.floor(seconds / 60)}:${Math.floor(seconds % 60).toString().padStart(2,"0")}`;
+}
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+}
+function setConnection(ok, text) {
+  $("connection-status").classList.toggle("error", !ok);
+  $("connection-status").innerHTML = `<i></i> ${text}`;
+}
+function setAuthUI(user) {
+  currentUser = user;
+  $("login-open").classList.toggle("hidden", !!user);
+  $("logout-button").classList.toggle("hidden", !user);
+  $("admin-panel").classList.toggle("hidden", !user);
+}
+function trackUrl(track) {
+  return client.storage.from(BUCKET).getPublicUrl(track.file_path).data.publicUrl;
+}
+function renderTracks() {
+  const query = $("search-input").value.trim().toLowerCase();
+  const filtered = tracks.filter(t => `${t.title} ${t.artist || ""}`.toLowerCase().includes(query));
+  $("track-count").textContent = tracks.length;
+  const list = $("library-list");
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty-state">${tracks.length ? "Ничего не найдено." : "Медиатека пока пуста. Войди в аккаунт администратора, чтобы загрузить первый трек."}</div>`;
+    return;
+  }
+  list.innerHTML = filtered.map(t => {
+    const index = tracks.findIndex(x => x.id === t.id);
+    const active = index === currentIndex && !audio.paused;
+    return `<div class="track-row">
+      <span class="track-number">${String(index+1).padStart(2,"0")}</span>
+      <button class="track-play" data-play="${t.id}">${active ? "Ⅱ" : "▶"}</button>
+      <div class="track-info"><strong>${escapeHtml(t.title)}</strong><small>${escapeHtml(t.artist || "Неизвестный исполнитель")}</small></div>
+      <span class="track-duration">${t.duration ? formatTime(t.duration) : "--:--"}</span>
+      ${currentUser ? `<button class="delete-track" data-delete="${t.id}" title="Удалить">×</button>` : ""}
+    </div>`;
+  }).join("");
+  list.querySelectorAll("[data-play]").forEach(b => b.addEventListener("click", () => playTrackById(b.dataset.play)));
+  list.querySelectorAll("[data-delete]").forEach(b => b.addEventListener("click", () => deleteTrack(b.dataset.delete)));
+}
+async function loadTracks() {
+  $("library-list").innerHTML = `<div class="empty-state">Загружаем медиатеку...</div>`;
+  const {data,error} = await client.from("tracks").select("*").order("created_at",{ascending:true});
+  if (error) {
+    $("library-list").innerHTML = `<div class="empty-state">Ошибка загрузки: ${escapeHtml(error.message)}</div>`;
+    $("library-message").textContent = "Проверь доступ к таблице и настройки RLS.";
+    return;
+  }
+  tracks = data || [];
+  $("library-message").textContent = "";
+  renderTracks();
+}
+function playTrack(index) {
+  if (index < 0 || index >= tracks.length) return;
+  currentIndex = index;
+  const t = tracks[index];
+  audio.src = trackUrl(t);
+  $("now-title").textContent = t.title;
+  $("now-artist").textContent = t.artist || "Неизвестный исполнитель";
+  audio.play().catch(err => { console.error(err); toast("Не удалось воспроизвести файл. Проверь Public bucket."); });
+}
+function playTrackById(id) {
+  const index = tracks.findIndex(t => t.id === id);
+  if (index === currentIndex && !audio.paused) audio.pause();
+  else playTrack(index);
+}
+function playNext() {
+  if (tracks.length) playTrack((currentIndex + 1) % tracks.length);
+}
+function playPrevious() {
+  if (!tracks.length) return;
+  if (audio.currentTime > 3) audio.currentTime = 0;
+  else playTrack((currentIndex - 1 + tracks.length) % tracks.length);
+}
+async function deleteTrack(id) {
+  if (!currentUser) return;
+  const track = tracks.find(t => t.id === id);
+  if (!track || !confirm(`Удалить «${track.title}» из медиатеки?`)) return;
+  const {error: storageError} = await client.storage.from(BUCKET).remove([track.file_path]);
+  if (storageError) return toast(`Ошибка удаления файла: ${storageError.message}`);
+  const {error: dbError} = await client.from("tracks").delete().eq("id",id);
+  if (dbError) {
+    toast(`Файл удален, но запись осталась: ${dbError.message}`);
+    await loadTracks();
+    return;
+  }
+  if (tracks[currentIndex]?.id === id) {
+    audio.pause(); audio.removeAttribute("src"); currentIndex = -1;
+    $("now-title").textContent = "Ничего не воспроизводится";
+    $("now-artist").textContent = "Выбери трек из библиотеки";
+  }
+  toast("Трек удален");
+  await loadTracks();
+}
+function getDuration(file) {
+  return new Promise(resolve => {
+    const temp = document.createElement("audio");
+    const url = URL.createObjectURL(file);
+    temp.preload = "metadata";
+    temp.onloadedmetadata = () => { const d = Math.round(temp.duration); URL.revokeObjectURL(url); resolve(Number.isFinite(d) ? d : null); };
+    temp.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+    temp.src = url;
+  });
+}
+
+$("login-open").addEventListener("click", () => {
+  $("login-modal").classList.remove("hidden");
+  $("login-email").focus();
+});
+$("login-close").addEventListener("click", () => $("login-modal").classList.add("hidden"));
+$("login-modal").addEventListener("click",e => { if(e.target === $("login-modal")) $("login-modal").classList.add("hidden"); });
+
+$("login-form").addEventListener("submit",async e => {
+  e.preventDefault();
+  const button = $("login-button");
+  button.disabled = true;
+  $("login-message").textContent = "Проверяем данные...";
+  const {data,error} = await client.auth.signInWithPassword({
+    email:$("login-email").value.trim(),
+    password:$("login-password").value
+  });
+  button.disabled = false;
+  if(error) { $("login-message").textContent = error.message; return; }
+  setAuthUI(data.user);
+  $("login-modal").classList.add("hidden");
+  toast("Вход выполнен");
+  renderTracks();
+});
+$("logout-button").addEventListener("click",async () => {
+  const {error} = await client.auth.signOut();
+  if(error) return toast(error.message);
+  setAuthUI(null);
+  toast("Вы вышли из аккаунта");
+  renderTracks();
+});
+$("refresh-button").addEventListener("click",loadTracks);
+$("search-input").addEventListener("input",renderTracks);
+
+$("audio-file").addEventListener("change",() => {
+  const file = $("audio-file").files[0];
+  $("file-label").textContent = file ? file.name : "Выбери аудиофайл";
+  if(file && !$("track-title").value) $("track-title").value = file.name.replace(/\.[^.]+$/,"");
+});
+
+$("upload-form").addEventListener("submit",async e => {
+  e.preventDefault();
+  if(!currentUser) return toast("Сначала войди в аккаунт");
+  const file = $("audio-file").files[0];
+  const title = $("track-title").value.trim();
+  const artist = $("track-artist").value.trim();
+  const message = $("upload-message");
+  const button = $("upload-button");
+  if(!file) { message.textContent = "Сначала выбери файл."; return; }
+  if(file.size > MAX_FILE_SIZE) { message.textContent = "Файл больше 50 МБ."; return; }
+  const ext = (file.name.split(".").pop() || "mp3").toLowerCase().replace(/[^a-z0-9]/g,"");
+  const path = `${Date.now()}-${crypto.randomUUID()}.${ext}`;
+  button.disabled = true;
+  message.textContent = "Определяем длительность и загружаем файл...";
+  const duration = await getDuration(file);
+  const {error: uploadError} = await client.storage.from(BUCKET).upload(path,file,{
+    cacheControl:"3600",upsert:false,contentType:file.type || "audio/mpeg"
+  });
+  if(uploadError) {
+    button.disabled = false;
+    message.textContent = `Ошибка загрузки: ${uploadError.message}`;
+    return;
+  }
+  const {error: insertError} = await client.from("tracks").insert({
+    title,artist:artist || null,file_path:path,duration
+  });
+  if(insertError) {
+    await client.storage.from(BUCKET).remove([path]);
+    button.disabled = false;
+    message.textContent = `Ошибка записи в базу: ${insertError.message}. Файл удален.`;
+    return;
+  }
+  $("upload-form").reset();
+  $("file-label").textContent = "Выбери аудиофайл";
+  message.textContent = "Готово! Трек добавлен.";
+  button.disabled = false;
+  toast("Трек успешно загружен");
+  await loadTracks();
+});
+
+$("play-button").addEventListener("click",() => {
+  if(!audio.src) return tracks.length ? playTrack(0) : toast("Сначала добавь треки");
+  if(audio.paused) audio.play(); else audio.pause();
+});
+$("next-button").addEventListener("click",playNext);
+$("prev-button").addEventListener("click",playPrevious);
+$("volume").addEventListener("input",e => audio.volume = Number(e.target.value));
+$("seek").addEventListener("input",e => {
+  if(Number.isFinite(audio.duration)) audio.currentTime = audio.duration * Number(e.target.value) / 100;
+});
+audio.addEventListener("timeupdate",() => {
+  $("current-time").textContent = formatTime(audio.currentTime);
+  $("total-time").textContent = formatTime(audio.duration);
+  if(Number.isFinite(audio.duration) && audio.duration > 0) $("seek").value = audio.currentTime / audio.duration * 100;
+});
+audio.addEventListener("play",() => { $("play-button").textContent = "Ⅱ"; renderTracks(); });
+audio.addEventListener("pause",() => { $("play-button").textContent = "▶"; renderTracks(); });
+audio.addEventListener("ended",playNext);
+
+async function init() {
+  audio.volume = 0.8;
+  try {
+    const {data:{session},error} = await client.auth.getSession();
+    if(error) throw error;
+    setAuthUI(session?.user || null);
+    setConnection(true,"SUPABASE ONLINE");
+    await loadTracks();
+    client.auth.onAuthStateChange((_event,sessionNow) => {
+      setAuthUI(sessionNow?.user || null);
+      renderTracks();
+    });
+  } catch(err) {
+    console.error(err);
+    setConnection(false,"ОШИБКА ПОДКЛЮЧЕНИЯ");
+    $("library-list").innerHTML = `<div class="empty-state">Не удалось подключиться к Supabase. Проверь URL и Publishable key.</div>`;
+  }
+}
+init();
