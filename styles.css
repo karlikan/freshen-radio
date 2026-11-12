@@ -1,4 +1,4 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
 :root{--bg:#10120f;--panel:#171a16;--line:#2a3028;--text:#f0f3eb;--muted:#929b8d;--green:#c9a45c;--red:#ff7777}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Manrope,Arial,sans-serif;min-height:100vh;overflow-x:hidden}.ambient{position:fixed;width:420px;height:420px;border-radius:50%;background:#a4e52c;filter:blur(120px);opacity:.1;right:-180px;top:0;pointer-events:none;z-index:-1}.shell{max-width:1080px;margin:auto;padding:28px 30px 24px}
 .topbar,.top-actions,.brand,.section-heading,.admin-heading,.controls,.progress-row,footer{display:flex;align-items:center}.topbar,.section-heading,.admin-heading,footer{justify-content:space-between}
@@ -1066,3 +1066,33 @@ footer {
 }
 
 /* ===== END FRESHEN MUSIC RADIO 0.8 ===== */
+
+/* FRESHEN MUSIC RADIO 0.9 - AUTODJ SETTINGS */
+
+.radio-options {
+    align-items: flex-end;
+}
+
+.radio-options label {
+    min-width: 170px;
+    flex: 1 1 170px;
+}
+
+.radio-options select,
+.radio-options input[type="number"] {
+    width: 100%;
+    min-width: 0;
+    padding: 11px 12px;
+    background: #101010;
+    color: #eeeeee;
+    border: 1px solid #393226;
+    border-radius: 7px;
+    font: inherit;
+    font-size: 12px;
+    outline: none;
+}
+
+.radio-options select:focus,
+.radio-options input[type="number"]:focus {
+    border-color: #d6b56d;
+}

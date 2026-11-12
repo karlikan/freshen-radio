@@ -1,4 +1,4 @@
-﻿// FRESHEN MUSIC RADIO 0.2
+// FRESHEN MUSIC RADIO 0.2
 // Используй только Publishable key. Никогда не вставляй service_role или secret key.
 const SUPABASE_URL = "https://dyuybnfbtcvtkkyauqmd.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iqNXYa5VEjr81zOaQvS0uQ_QXyvV-2o";
@@ -20,6 +20,96 @@ let autoDJEnabled = false;
 let songsSinceJingle = 0;
 let baseVolume = 0.8;
 let jingleBusy = false;
+let volumeFadeFrame = 0;
+let volumeFadeToken = 0;
+let musicDucked = false;
+
+const AUTODJ_SETTINGS_KEY = "freshen-radio-autodj-settings";
+
+function clampNumber(value, min, max, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number)
+    ? Math.min(max, Math.max(min, number))
+    : fallback;
+}
+
+function getAutoDJSettings() {
+  return {
+    mode: $("jingle-mode").value === "duck" ? "duck" : "between",
+    frequency: Math.round(clampNumber($("jingle-frequency").value, 1, 1000, 2)),
+    fadeOut: clampNumber($("fade-out-time").value, 0.1, 10, 2),
+    fadeIn: clampNumber($("fade-in-time").value, 0.1, 10, 2)
+  };
+}
+
+function saveAutoDJSettings() {
+  const settings = getAutoDJSettings();
+
+  $("jingle-frequency").value = settings.frequency;
+  $("fade-out-time").value = settings.fadeOut;
+  $("fade-in-time").value = settings.fadeIn;
+
+  try {
+    localStorage.setItem(AUTODJ_SETTINGS_KEY, JSON.stringify(settings));
+  } catch (error) {
+    console.warn("Не удалось сохранить настройки AutoDJ", error);
+  }
+}
+
+function loadAutoDJSettings() {
+  let settings = {};
+
+  try {
+    settings = JSON.parse(localStorage.getItem(AUTODJ_SETTINGS_KEY) || "{}");
+  } catch (error) {
+    settings = {};
+  }
+
+  $("jingle-mode").value = settings.mode === "duck" ? "duck" : "between";
+  $("jingle-frequency").value = Math.round(clampNumber(settings.frequency, 1, 1000, 2));
+  $("fade-out-time").value = clampNumber(settings.fadeOut, 0.1, 10, 2);
+  $("fade-in-time").value = clampNumber(settings.fadeIn, 0.1, 10, 2);
+}
+
+function fadeMusicVolume(targetVolume, durationSeconds) {
+  volumeFadeToken++;
+  const token = volumeFadeToken;
+
+  if (volumeFadeFrame) {
+    cancelAnimationFrame(volumeFadeFrame);
+    volumeFadeFrame = 0;
+  }
+
+  const startVolume = audio.volume;
+  const target = clampNumber(targetVolume, 0, 1, baseVolume);
+  const duration = clampNumber(durationSeconds, 0.1, 10, 2) * 1000;
+
+  return new Promise(resolve => {
+    const startTime = performance.now();
+
+    function step(now) {
+      if (token !== volumeFadeToken) {
+        resolve(false);
+        return;
+      }
+
+      const progress = Math.min(1, (now - startTime) / duration);
+      const eased = progress * progress * (3 - 2 * progress);
+
+      audio.volume = startVolume + (target - startVolume) * eased;
+
+      if (progress < 1) {
+        volumeFadeFrame = requestAnimationFrame(step);
+      } else {
+        volumeFadeFrame = 0;
+        audio.volume = target;
+        resolve(true);
+      }
+    }
+
+    volumeFadeFrame = requestAnimationFrame(step);
+  });
+}
 let toastTimer;
 
 function toast(message) {
@@ -384,7 +474,10 @@ $("play-button").addEventListener("click",() => {
 });
 $("next-button").addEventListener("click",playNext);
 $("prev-button").addEventListener("click",playPrevious);
-$("volume").addEventListener("input",e => audio.volume = Number(e.target.value));
+$("volume").addEventListener("input", e => {
+  baseVolume = clampNumber(e.target.value, 0, 1, 0.8);
+  audio.volume = musicDucked ? baseVolume * 0.22 : baseVolume;
+});
 $("seek").addEventListener("input",e => {
   if(Number.isFinite(audio.duration)) audio.currentTime = audio.duration * Number(e.target.value) / 100;
 });
@@ -512,7 +605,13 @@ function stopAutoDJ() {
   autoDJEnabled = false;
   activeQueue = null;
   songsSinceJingle = 0;
-  audio.volume = baseVolume;
+
+  jingleAudio.pause();
+  jingleAudio.onended = null;
+  jingleBusy = false;
+  musicDucked = false;
+
+  fadeMusicVolume(baseVolume, getAutoDJSettings().fadeIn);
   setAutoDJStatus(false);
 }
 
@@ -527,8 +626,17 @@ function startAutoDJ() {
 
   if (!activeQueue.length) return toast("В плейлисте нет доступных треков");
 
+  jingleAudio.pause();
+  jingleAudio.onended = null;
+  jingleBusy = false;
+  musicDucked = false;
+
+  baseVolume = clampNumber($("volume").value, 0, 1, 0.8);
+  audio.volume = baseVolume;
+
   autoDJEnabled = true;
   songsSinceJingle = 0;
+
   const firstIndex = tracks.findIndex(t => t.id === activeQueue[0]);
   setAutoDJStatus(true);
 
@@ -553,14 +661,17 @@ async function handleAutoDJEnded() {
   }
 
   const nextIndex = getNextQueueIndex();
+
   if (nextIndex < 0) {
     stopAutoDJ();
     return;
   }
 
   songsSinceJingle++;
-  const frequency = Number($("jingle-frequency").value);
-  const shouldPlayJingle = jingles.length > 0 && songsSinceJingle >= frequency;
+
+  const settings = getAutoDJSettings();
+  const shouldPlayJingle =
+    jingles.length > 0 && songsSinceJingle >= settings.frequency;
 
   if (!shouldPlayJingle) {
     playTrack(nextIndex);
@@ -573,7 +684,7 @@ async function handleAutoDJEnded() {
   jingleBusy = true;
   jingleAudio.src = trackUrl(jingle);
 
-  if ($("jingle-mode").value === "between") {
+  if (settings.mode === "between") {
     jingleAudio.onended = () => {
       jingleBusy = false;
       jingleAudio.onended = null;
@@ -584,31 +695,49 @@ async function handleAutoDJEnded() {
       await jingleAudio.play();
     } catch (error) {
       jingleBusy = false;
-      playTrack(nextIndex);
+      jingleAudio.onended = null;
+      if (autoDJEnabled) playTrack(nextIndex);
     }
+
     return;
   }
 
-  audio.volume = baseVolume * 0.22;
   playTrack(nextIndex);
+  musicDucked = true;
 
-  jingleAudio.onended = () => {
+  await fadeMusicVolume(baseVolume * 0.22, settings.fadeOut);
+
+  if (!autoDJEnabled || !jingleBusy) return;
+
+  jingleAudio.onended = async () => {
     jingleBusy = false;
     jingleAudio.onended = null;
-    audio.volume = baseVolume;
+    musicDucked = false;
+
+    if (autoDJEnabled) {
+      await fadeMusicVolume(baseVolume, getAutoDJSettings().fadeIn);
+    }
   };
 
   try {
     await jingleAudio.play();
   } catch (error) {
     jingleBusy = false;
-    audio.volume = baseVolume;
+    jingleAudio.onended = null;
+    musicDucked = false;
+    await fadeMusicVolume(baseVolume, settings.fadeIn);
   }
 }
 
 $("autodj-start").addEventListener("click", startAutoDJ);
 $("autodj-stop").addEventListener("click", stopAutoDJ);
 $("jingle-upload").addEventListener("click", uploadJingle);
+
+["jingle-mode", "jingle-frequency", "fade-out-time", "fade-in-time"].forEach(id => {
+  $(id).addEventListener("change", () => {
+    saveAutoDJSettings();
+  });
+});
 
 $("jingle-file").addEventListener("change", () => {
   const file = $("jingle-file").files[0];
@@ -625,7 +754,9 @@ setAuthUI = function(user) {
 };
 
 async function init() {
-  audio.volume = 0.8;
+  loadAutoDJSettings();
+  baseVolume = clampNumber($("volume").value, 0, 1, 0.8);
+  audio.volume = baseVolume;
   try {
     const {data:{session},error} = await client.auth.getSession();
     if(error) throw error;
