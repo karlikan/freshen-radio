@@ -879,7 +879,8 @@ async function handleAutoDJEnded() {
   musicDucked = true;
 
   // Начинаем Fade Out одновременно с запуском джингла
-  const duckTarget = baseVolume * Math.pow(10, -settings.duckDb / 20);`n  const fadeOutPromise = fadeMusicVolume(duckTarget, settings.fadeOut);
+  const duckTarget = baseVolume * Math.pow(10, -settings.duckDb / 20);
+  const fadeOutPromise = fadeMusicVolume(duckTarget, settings.fadeOut);
 
   // Обработчик устанавливается до запуска аудио
   jingleAudio.onended = async () => {
