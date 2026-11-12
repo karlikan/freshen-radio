@@ -145,102 +145,178 @@ body { background: #090909; }
 }
 
 
-/* FRESHEN RADIO 0.6 BLACK GOLD WHITE */
+/* ===== FRESHEN MUSIC RADIO 0.7 ===== */
 
 :root {
-    color-scheme: dark !important;
-    --radio-black: #050505;
-    --radio-panel: #101010;
-    --radio-gold: #D4AF37;
-    --radio-white: #FFFFFF;
-    --radio-muted: #AFAFAF;
+    color-scheme: dark;
+    --gold: #D6B65C;
+    --gold-light: #F0D98A;
+    --white: #F5F5F5;
+    --muted: #A5A5A5;
+    --black: #050505;
+    --panel: #111111;
+    --panel-hover: #1A1A1A;
 }
 
-html {
+html, body {
     background: #050505 !important;
+    color: #F5F5F5;
 }
 
 body {
-    background: #050505 !important;
+    position: relative;
+    isolation: isolate;
+    min-height: 100vh;
     background-image: none !important;
-    color: #FFFFFF !important;
 }
 
-header, footer, nav, main, section,
-.card, .panel, .player, .hero,
-.sidebar, .content, .playlist,
-.playlists, .track-list, .now-playing,
+/* Плавные золотые и белые свечения */
+
+body::before {
+    content: "";
+    position: fixed;
+    inset: -35%;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse at 20% 25%,
+            rgba(214,182,92,.20), transparent 40%),
+        radial-gradient(ellipse at 80% 30%,
+            rgba(255,255,255,.11), transparent 42%),
+        radial-gradient(ellipse at 55% 85%,
+            rgba(214,182,92,.13), transparent 43%);
+    filter: blur(85px);
+    animation: freshenGlow 30s ease-in-out infinite alternate;
+}
+
+body::after {
+    content: "";
+    position: fixed;
+    inset: -35%;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse at 70% 75%,
+            rgba(255,255,255,.07), transparent 35%),
+        radial-gradient(ellipse at 25% 75%,
+            rgba(214,182,92,.08), transparent 38%);
+    filter: blur(100px);
+    animation: freshenGlowTwo 38s ease-in-out infinite alternate;
+}
+
+@keyframes freshenGlow {
+    0% { transform: translate(-3%, -2%) scale(1); }
+    50% { transform: translate(3%, 2%) scale(1.08); }
+    100% { transform: translate(-1%, 4%) scale(1.03); }
+}
+
+@keyframes freshenGlowTwo {
+    0% { transform: translate(2%, 3%) scale(1.04); }
+    100% { transform: translate(-3%, -2%) scale(1.12); }
+}
+
+/* Заголовки и название станции */
+
+h1, h2, h3, h4,
+.logo, .brand, .station-name {
+    color: var(--gold) !important;
+    text-shadow: 0 0 24px rgba(214,182,92,.12);
+}
+
+/* Текст */
+
+p, li, label {
+    color: var(--white);
+}
+
+small, .muted, .subtitle {
+    color: var(--muted);
+}
+
+/* Все основные панели - оттенки черного */
+
+header, footer, section,
+.card, .panel, .player,
+.playlist, .playlists,
+.track-list, .now-playing,
 .admin-panel, .autodj-panel,
 .jingle-panel, .modal-content,
 .login-modal, .radio-player,
 .playlist-panel, .library,
 .controls, .settings-panel {
-    background-color: #101010 !important;
+    background-color: rgba(15,15,15,.90) !important;
     background-image: none !important;
-    color: #FFFFFF !important;
-    border-color: #292929 !important;
+    border-color: rgba(255,255,255,.09) !important;
 }
 
-h1, h2, h3, h4, .logo, .brand,
-.station-name, .gold, .accent,
-.active, .selected {
-    color: #D4AF37 !important;
+/* Элементы списков */
+
+.track, .playlist-item, .list-item {
+    background-color: #131313 !important;
+    border-color: #252525 !important;
+    transition: background-color .25s ease,
+                border-color .25s ease;
 }
 
-p, span, label, li, small,
-.track-title, .track-artist,
-.now-title, .now-artist {
-    color: #FFFFFF;
+.track:hover, .playlist-item:hover,
+.list-item:hover {
+    background-color: #1B1B1B !important;
+    border-color: rgba(214,182,92,.4) !important;
 }
+
+/* Кнопки */
 
 button, .button, .btn,
 input[type="submit"] {
-    background: #D4AF37 !important;
-    background-image: none !important;
-    color: #050505 !important;
-    border: 1px solid #D4AF37 !important;
+    background: #151515 !important;
+    color: var(--gold) !important;
+    border: 1px solid rgba(214,182,92,.45) !important;
     box-shadow: none !important;
+    transition: .25s ease;
 }
 
 button:hover, .button:hover, .btn:hover,
 input[type="submit"]:hover {
-    background: #F0D875 !important;
-    color: #050505 !important;
-    border-color: #F0D875 !important;
+    background: #222222 !important;
+    color: var(--gold-light) !important;
+    border-color: var(--gold) !important;
 }
 
+/* Поля ввода */
+
 input, textarea, select {
-    background: #080808 !important;
-    color: #FFFFFF !important;
-    border: 1px solid #555555 !important;
+    background: #090909 !important;
+    color: #F5F5F5 !important;
+    border: 1px solid #303030 !important;
 }
 
 input:focus, textarea:focus, select:focus {
-    border-color: #D4AF37 !important;
+    border-color: var(--gold) !important;
     outline: none !important;
-    box-shadow: 0 0 0 2px rgba(212,175,55,.15) !important;
 }
 
-a {
-    color: #D4AF37 !important;
+/* Ссылки и активные элементы */
+
+a, .active, .selected, .playing {
+    color: var(--gold) !important;
+}
+
+.active, .selected, .playing {
+    border-color: var(--gold) !important;
 }
 
 hr, .divider {
     border-color: #292929 !important;
 }
 
-.track:hover, .playlist-item:hover,
-.list-item:hover {
-    background: #191919 !important;
+/* Выделение текста */
+
+::selection {
+    background: var(--gold);
+    color: #050505;
 }
 
-.active, .selected, .playing {
-    border-color: #D4AF37 !important;
-}
-
-audio {
-    accent-color: #D4AF37;
-}
+/* Полоса прокрутки */
 
 ::-webkit-scrollbar {
     width: 8px;
@@ -251,17 +327,20 @@ audio {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #80651C;
+    background: #303030;
     border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #D4AF37;
+    background: #806B35;
 }
 
-::selection {
-    background: #D4AF37;
-    color: #050505;
+/* Уменьшение анимации по настройке системы */
+
+@media (prefers-reduced-motion: reduce) {
+    body::before, body::after {
+        animation: none !important;
+    }
 }
 
-/* End of 0.6 theme */
+/* ===== END VERSION 0.7 ===== */
