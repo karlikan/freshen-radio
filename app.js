@@ -1,4 +1,4 @@
-// FRESHEN MUSIC RADIO 0.2
+﻿// FRESHEN MUSIC RADIO 0.2
 // Используй только Publishable key. Никогда не вставляй service_role или secret key.
 const SUPABASE_URL = "https://dyuybnfbtcvtkkyauqmd.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iqNXYa5VEjr81zOaQvS0uQ_QXyvV-2o";
@@ -15,6 +15,11 @@ let playlists = [];
 let selectedPlaylistId = null;
 let selectedPlaylistTracks = [];
 let activeQueue = null;
+let jingles = [];
+let autoDJEnabled = false;
+let songsSinceJingle = 0;
+let baseVolume = 0.8;
+let jingleBusy = false;
 let toastTimer;
 
 function toast(message) {
@@ -76,7 +81,9 @@ async function loadTracks() {
     $("library-message").textContent = "Проверь доступ к таблице и настройки RLS.";
     return;
   }
-  tracks = data || [];
+  tracks = (data || []).filter(t => !t.is_jingle);
+  jingles = (data || []).filter(t => t.is_jingle === true);
+  renderJingles();
   $("library-message").textContent = "";
   renderTracks();
 }
@@ -355,7 +362,7 @@ $("upload-form").addEventListener("submit",async e => {
     return;
   }
   const {error: insertError} = await client.from("tracks").insert({
-    title,artist:artist || null,file_path:path,duration
+    title,artist:artist || null,file_path:path,duration,is_jingle:false
   });
   if(insertError) {
     await client.storage.from(BUCKET).remove([path]);
@@ -388,7 +395,234 @@ audio.addEventListener("timeupdate",() => {
 });
 audio.addEventListener("play",() => { $("play-button").textContent = "Ⅱ"; renderTracks(); });
 audio.addEventListener("pause",() => { $("play-button").textContent = "▶"; renderTracks(); });
-audio.addEventListener("ended",playNext);
+audio.addEventListener("ended",handleAutoDJEnded);
+
+
+// FRESHEN MUSIC RADIO 0.5: AUTODJ AND JINGLES
+const jingleAudio = new Audio();
+jingleAudio.preload = "auto";
+
+function renderJingles() {
+  const list = $("jingle-list");
+  if (!list) return;
+  $("jingle-count").textContent = jingles.length + " JINGLES";
+
+  if (!jingles.length) {
+    list.innerHTML = '<div class="empty-state">Джинглов пока нет.</div>';
+    return;
+  }
+
+  list.innerHTML = jingles.map(j => `
+    <div class="track-row">
+      <button class="track-play" data-play-jingle="${j.id}">▶</button>
+      <div class="track-info"><strong>${escapeHtml(j.title)}</strong><small>RADIO JINGLE</small></div>
+      ${currentUser ? `<button class="delete-track" data-delete-jingle="${j.id}">×</button>` : ""}
+    </div>
+  `).join("");
+
+  list.querySelectorAll("[data-play-jingle]").forEach(b => {
+    b.addEventListener("click", () => {
+      const j = jingles.find(x => x.id === b.dataset.playJingle);
+      if (!j) return;
+      jingleAudio.src = trackUrl(j);
+      jingleAudio.play().catch(() => toast("Не удалось воспроизвести джингл"));
+    });
+  });
+
+  list.querySelectorAll("[data-delete-jingle]").forEach(b => {
+    b.addEventListener("click", () => deleteJingle(b.dataset.deleteJingle));
+  });
+}
+
+async function uploadJingle() {
+  if (!currentUser) return toast("Сначала войди в аккаунт");
+
+  const file = $("jingle-file").files[0];
+  const title = $("jingle-title").value.trim() ||
+    (file ? file.name.replace(/\.[^.]+$/, "") : "");
+
+  if (!file) return $("jingle-message").textContent = "Выбери аудиофайл.";
+  if (file.size > MAX_FILE_SIZE) return $("jingle-message").textContent = "Файл больше 50 МБ.";
+
+  const button = $("jingle-upload");
+  button.disabled = true;
+  $("jingle-message").textContent = "Загружаю джингл...";
+
+  const ext = (file.name.split(".").pop() || "mp3").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const path = `${Date.now()}-${crypto.randomUUID()}.${ext}`;
+
+  const {error: uploadError} = await client.storage.from(BUCKET).upload(path, file, {
+    cacheControl: "3600",
+    upsert: false,
+    contentType: file.type || "audio/mpeg"
+  });
+
+  if (uploadError) {
+    button.disabled = false;
+    $("jingle-message").textContent = uploadError.message;
+    return;
+  }
+
+  const duration = await getDuration(file);
+  const {error} = await client.from("tracks").insert({
+    title,
+    artist: "FRESHEN MUSIC RADIO",
+    file_path: path,
+    duration,
+    is_jingle: true
+  });
+
+  if (error) {
+    await client.storage.from(BUCKET).remove([path]);
+    button.disabled = false;
+    $("jingle-message").textContent = error.message;
+    return;
+  }
+
+  $("jingle-file").value = "";
+  $("jingle-title").value = "";
+  $("jingle-file-label").textContent = "Загрузить джингл";
+  $("jingle-message").textContent = "Джингл загружен.";
+  button.disabled = false;
+  await loadTracks();
+  toast("Джингл добавлен");
+}
+
+async function deleteJingle(id) {
+  if (!currentUser) return;
+  const j = jingles.find(x => x.id === id);
+  if (!j || !confirm(`Удалить джингл «${j.title}»?`)) return;
+
+  const {error: storageError} = await client.storage.from(BUCKET).remove([j.file_path]);
+  if (storageError) return toast(storageError.message);
+
+  const {error} = await client.from("tracks").delete().eq("id", id);
+  if (error) return toast(error.message);
+
+  await loadTracks();
+  toast("Джингл удален");
+}
+
+function setAutoDJStatus(on) {
+  $("autodj-status").textContent = on ? "● AUTODJ ON AIR" : "AUTODJ OFFLINE";
+  $("autodj-status").classList.toggle("dj-active", on);
+}
+
+function stopAutoDJ() {
+  autoDJEnabled = false;
+  activeQueue = null;
+  songsSinceJingle = 0;
+  audio.volume = baseVolume;
+  setAutoDJStatus(false);
+}
+
+function startAutoDJ() {
+  if (!selectedPlaylistTracks.length) {
+    return toast("Сначала выбери плейлист с песнями");
+  }
+
+  activeQueue = selectedPlaylistTracks
+    .map(item => item.track_id)
+    .filter(id => tracks.some(t => t.id === id));
+
+  if (!activeQueue.length) return toast("В плейлисте нет доступных треков");
+
+  autoDJEnabled = true;
+  songsSinceJingle = 0;
+  const firstIndex = tracks.findIndex(t => t.id === activeQueue[0]);
+  setAutoDJStatus(true);
+
+  if (firstIndex >= 0) {
+    playTrack(firstIndex);
+    toast("AutoDJ запущен");
+  }
+}
+
+function getNextQueueIndex() {
+  if (!activeQueue || !activeQueue.length) return -1;
+  const currentId = tracks[currentIndex]?.id;
+  const position = activeQueue.indexOf(currentId);
+  const nextId = activeQueue[(position + 1 + activeQueue.length) % activeQueue.length];
+  return tracks.findIndex(t => t.id === nextId);
+}
+
+async function handleAutoDJEnded() {
+  if (!autoDJEnabled) {
+    playNext();
+    return;
+  }
+
+  const nextIndex = getNextQueueIndex();
+  if (nextIndex < 0) {
+    stopAutoDJ();
+    return;
+  }
+
+  songsSinceJingle++;
+  const frequency = Number($("jingle-frequency").value);
+  const shouldPlayJingle = jingles.length > 0 && songsSinceJingle >= frequency;
+
+  if (!shouldPlayJingle) {
+    playTrack(nextIndex);
+    return;
+  }
+
+  songsSinceJingle = 0;
+
+  const jingle = jingles[Math.floor(Math.random() * jingles.length)];
+  jingleBusy = true;
+  jingleAudio.src = trackUrl(jingle);
+
+  if ($("jingle-mode").value === "between") {
+    jingleAudio.onended = () => {
+      jingleBusy = false;
+      jingleAudio.onended = null;
+      if (autoDJEnabled) playTrack(nextIndex);
+    };
+
+    try {
+      await jingleAudio.play();
+    } catch (error) {
+      jingleBusy = false;
+      playTrack(nextIndex);
+    }
+    return;
+  }
+
+  audio.volume = baseVolume * 0.22;
+  playTrack(nextIndex);
+
+  jingleAudio.onended = () => {
+    jingleBusy = false;
+    jingleAudio.onended = null;
+    audio.volume = baseVolume;
+  };
+
+  try {
+    await jingleAudio.play();
+  } catch (error) {
+    jingleBusy = false;
+    audio.volume = baseVolume;
+  }
+}
+
+$("autodj-start").addEventListener("click", startAutoDJ);
+$("autodj-stop").addEventListener("click", stopAutoDJ);
+$("jingle-upload").addEventListener("click", uploadJingle);
+
+$("jingle-file").addEventListener("change", () => {
+  const file = $("jingle-file").files[0];
+  $("jingle-file-label").textContent = file ? file.name : "Загрузить джингл";
+  if (file && !$("jingle-title").value) {
+    $("jingle-title").value = file.name.replace(/\.[^.]+$/, "");
+  }
+});
+
+const originalSetAuthUI = setAuthUI;
+setAuthUI = function(user) {
+  originalSetAuthUI(user);
+  $("jingle-admin").classList.toggle("hidden", !user);
+};
 
 async function init() {
   audio.volume = 0.8;
@@ -410,3 +644,4 @@ async function init() {
   }
 }
 init();
+

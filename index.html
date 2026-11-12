@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
@@ -105,7 +105,59 @@
 </section>
 </section>
 
-<footer><span>FRESHEN MUSIC RADIO © 2026</span><span>Облачная медиатека · Версия 0.2</span></footer>
+<section class="radio-tools panel">
+  <div class="section-heading">
+    <div><div class="eyebrow">FRESHEN ON AIR</div><h2>AutoDJ</h2></div>
+    <span class="admin-tag">BROWSER MODE</span>
+  </div>
+  <p class="radio-description">Автоматическое воспроизведение выбранного плейлиста. Браузер должен оставаться открытым.</p>
+  <div class="radio-controls">
+    <button id="autodj-start" class="button button-primary">▶ Запустить AutoDJ</button>
+    <button id="autodj-stop" class="button button-quiet">Остановить</button>
+    <span id="autodj-status">AUTODJ OFFLINE</span>
+  </div>
+  <div class="radio-options">
+    <label>Режим джинглов
+      <select id="jingle-mode">
+        <option value="between">Между песнями</option>
+        <option value="duck">Поверх музыки с приглушением</option>
+      </select>
+    </label>
+    <label>Частота
+      <select id="jingle-frequency">
+        <option value="1">После каждой песни</option>
+        <option value="2" selected>После двух песен</option>
+        <option value="3">После трех песен</option>
+        <option value="5">После пяти песен</option>
+      </select>
+    </label>
+  </div>
+</section>
+
+<section class="radio-tools panel">
+  <div class="section-heading">
+    <div><div class="eyebrow">STATION IDENTITY</div><h2>Джинглы</h2></div>
+    <span id="jingle-count" class="admin-tag">0 JINGLES</span>
+  </div>
+  <p class="radio-description">Отдельная коллекция радиозаставок. Они не смешиваются с музыкальной медиатекой.</p>
+  <div id="jingle-admin" class="hidden">
+    <label class="file-drop jingle-drop" for="jingle-file">
+      <span class="upload-symbol">＋</span>
+      <strong id="jingle-file-label">Загрузить джингл</strong>
+      <small>MP3, WAV, FLAC, M4A · до 50 МБ</small>
+      <input id="jingle-file" type="file" accept="audio/*">
+    </label>
+    <div class="form-grid">
+      <label>Название джингла<input id="jingle-title" type="text" placeholder="Например, Freshen Music Radio"></label>
+    </div>
+    <button id="jingle-upload" class="button button-primary" type="button">Загрузить джингл</button>
+    <p id="jingle-message" class="form-message"></p>
+  </div>
+  <div id="jingle-list" class="track-list">
+    <div class="empty-state">Джинглов пока нет.</div>
+  </div>
+</section>
+<footer><span>FRESHEN MUSIC RADIO © 2026</span><span>FRESHEN MUSIC RADIO · Версия 0.5</span></footer>
 </main>
 
 <div id="login-modal" class="modal hidden">
@@ -125,3 +177,4 @@
 <div id="toast" class="toast"></div>
 </body>
 </html>
+
