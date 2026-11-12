@@ -143,3 +143,125 @@ body { background: #090909; }
     transition-duration: .01ms !important;
   }
 }
+
+
+/* FRESHEN RADIO 0.6 BLACK GOLD WHITE */
+
+:root {
+    color-scheme: dark !important;
+    --radio-black: #050505;
+    --radio-panel: #101010;
+    --radio-gold: #D4AF37;
+    --radio-white: #FFFFFF;
+    --radio-muted: #AFAFAF;
+}
+
+html {
+    background: #050505 !important;
+}
+
+body {
+    background: #050505 !important;
+    background-image: none !important;
+    color: #FFFFFF !important;
+}
+
+header, footer, nav, main, section,
+.card, .panel, .player, .hero,
+.sidebar, .content, .playlist,
+.playlists, .track-list, .now-playing,
+.admin-panel, .autodj-panel,
+.jingle-panel, .modal-content,
+.login-modal, .radio-player,
+.playlist-panel, .library,
+.controls, .settings-panel {
+    background-color: #101010 !important;
+    background-image: none !important;
+    color: #FFFFFF !important;
+    border-color: #292929 !important;
+}
+
+h1, h2, h3, h4, .logo, .brand,
+.station-name, .gold, .accent,
+.active, .selected {
+    color: #D4AF37 !important;
+}
+
+p, span, label, li, small,
+.track-title, .track-artist,
+.now-title, .now-artist {
+    color: #FFFFFF;
+}
+
+button, .button, .btn,
+input[type="submit"] {
+    background: #D4AF37 !important;
+    background-image: none !important;
+    color: #050505 !important;
+    border: 1px solid #D4AF37 !important;
+    box-shadow: none !important;
+}
+
+button:hover, .button:hover, .btn:hover,
+input[type="submit"]:hover {
+    background: #F0D875 !important;
+    color: #050505 !important;
+    border-color: #F0D875 !important;
+}
+
+input, textarea, select {
+    background: #080808 !important;
+    color: #FFFFFF !important;
+    border: 1px solid #555555 !important;
+}
+
+input:focus, textarea:focus, select:focus {
+    border-color: #D4AF37 !important;
+    outline: none !important;
+    box-shadow: 0 0 0 2px rgba(212,175,55,.15) !important;
+}
+
+a {
+    color: #D4AF37 !important;
+}
+
+hr, .divider {
+    border-color: #292929 !important;
+}
+
+.track:hover, .playlist-item:hover,
+.list-item:hover {
+    background: #191919 !important;
+}
+
+.active, .selected, .playing {
+    border-color: #D4AF37 !important;
+}
+
+audio {
+    accent-color: #D4AF37;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #050505;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #80651C;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #D4AF37;
+}
+
+::selection {
+    background: #D4AF37;
+    color: #050505;
+}
+
+/* End of 0.6 theme */
