@@ -1096,3 +1096,32 @@ footer {
 .radio-options input[type="number"]:focus {
     border-color: #d6b56d;
 }
+/* FRESHEN MUSIC RADIO 1.0 - AUTODJ SETTINGS */
+
+.radio-options {
+    align-items: flex-end;
+}
+
+.radio-options label {
+    min-width: 170px;
+    flex: 1 1 170px;
+}
+
+.radio-options select,
+.radio-options input[type="number"] {
+    width: 100%;
+    min-width: 0;
+    padding: 11px 12px;
+    background: #090909;
+    color: #eeeeee;
+    border: 1px solid rgba(216,182,92,.28);
+    border-radius: 8px;
+    font: inherit;
+    font-size: 12px;
+    outline: none;
+}
+
+.radio-options select:focus,
+.radio-options input[type="number"]:focus {
+    border-color: #d8b65c;
+}

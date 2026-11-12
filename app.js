@@ -1,4 +1,4 @@
-// FRESHEN MUSIC RADIO 0.2
+// FRESHEN MUSIC RADIO 1.0
 // Используй только Publishable key. Никогда не вставляй service_role или secret key.
 const SUPABASE_URL = "https://dyuybnfbtcvtkkyauqmd.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iqNXYa5VEjr81zOaQvS0uQ_QXyvV-2o";
@@ -491,7 +491,7 @@ audio.addEventListener("pause",() => { $("play-button").textContent = "▶"; ren
 audio.addEventListener("ended",handleAutoDJEnded);
 
 
-// FRESHEN MUSIC RADIO 0.5: AUTODJ AND JINGLES
+// FRESHEN MUSIC RADIO 1.0: AUTODJ AND JINGLES
 const jingleAudio = new Audio();
 jingleAudio.preload = "auto";
 
@@ -670,8 +670,10 @@ async function handleAutoDJEnded() {
   songsSinceJingle++;
 
   const settings = getAutoDJSettings();
+
   const shouldPlayJingle =
-    jingles.length > 0 && songsSinceJingle >= settings.frequency;
+    jingles.length > 0 &&
+    songsSinceJingle >= settings.frequency;
 
   if (!shouldPlayJingle) {
     playTrack(nextIndex);
@@ -681,14 +683,19 @@ async function handleAutoDJEnded() {
   songsSinceJingle = 0;
 
   const jingle = jingles[Math.floor(Math.random() * jingles.length)];
+
   jingleBusy = true;
   jingleAudio.src = trackUrl(jingle);
 
+  // Режим 1: джингл между музыкальными треками
   if (settings.mode === "between") {
     jingleAudio.onended = () => {
       jingleBusy = false;
       jingleAudio.onended = null;
-      if (autoDJEnabled) playTrack(nextIndex);
+
+      if (autoDJEnabled) {
+        playTrack(nextIndex);
+      }
     };
 
     try {
@@ -696,39 +703,63 @@ async function handleAutoDJEnded() {
     } catch (error) {
       jingleBusy = false;
       jingleAudio.onended = null;
-      if (autoDJEnabled) playTrack(nextIndex);
+
+      if (autoDJEnabled) {
+        playTrack(nextIndex);
+      }
     }
 
     return;
   }
 
+  // Режим 2: джингл поверх музыки
   playTrack(nextIndex);
   musicDucked = true;
 
-  await fadeMusicVolume(baseVolume * 0.22, settings.fadeOut);
+  // Начинаем Fade Out одновременно с запуском джингла
+  const fadeOutPromise = fadeMusicVolume(
+    baseVolume * 0.22,
+    settings.fadeOut
+  );
 
-  if (!autoDJEnabled || !jingleBusy) return;
-
+  // Обработчик устанавливается до запуска аудио
   jingleAudio.onended = async () => {
+    // Если джингл короче Fade Out, дожидаемся окончания затухания
+    await fadeOutPromise;
+
+    if (!jingleBusy) return;
+
     jingleBusy = false;
     jingleAudio.onended = null;
     musicDucked = false;
 
+    // Плавный Fade In после окончания джингла
     if (autoDJEnabled) {
-      await fadeMusicVolume(baseVolume, getAutoDJSettings().fadeIn);
+      await fadeMusicVolume(
+        baseVolume,
+        getAutoDJSettings().fadeIn
+      );
+    } else {
+      audio.volume = baseVolume;
     }
   };
 
   try {
+    // Джингл начинает играть сразу, не ожидая завершения Fade Out
     await jingleAudio.play();
   } catch (error) {
+    await fadeOutPromise;
+
     jingleBusy = false;
     jingleAudio.onended = null;
     musicDucked = false;
-    await fadeMusicVolume(baseVolume, settings.fadeIn);
+
+    await fadeMusicVolume(
+      baseVolume,
+      settings.fadeIn
+    );
   }
 }
-
 $("autodj-start").addEventListener("click", startAutoDJ);
 $("autodj-stop").addEventListener("click", stopAutoDJ);
 $("jingle-upload").addEventListener("click", uploadJingle);
