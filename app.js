@@ -24,8 +24,6 @@ let baseVolume = 0.8;
 let jingleBusy = false;
 let volumeFadeFrame = 0;
 let volumeFadeToken = 0;
-let volumeFadeResolve = null;
-let trackFadeStarted = false;
 let musicDucked = false;
 
 const AUTODJ_SETTINGS_KEY = "freshen-radio-autodj-settings";
@@ -41,14 +39,10 @@ function getAutoDJSettings() {
   return {
     mode: $("jingle-mode").value === "duck" ? "duck" : "between",
     frequency: Math.round(clampNumber($("jingle-frequency").value, 1, 1000, 2)),
-    fadeOut: clampNumber($("jingle-fade-out").value, 0.1, 10, 2),
-    fadeIn: clampNumber($("jingle-fade-in").value, 0.1, 10, 2),
-    duckDb: clampNumber($("duck-amount").value, 0, 40, 12),
+    fadeOut: clampNumber($("fade-out-time").value, 0.1, 10, 2),
+    fadeIn: clampNumber($("fade-in-time").value, 0.1, 10, 2),
     duckJingleId: $("duck-jingle-select")?.value || selectedDuckJingleId || null,
-    betweenJingleId: $("between-jingle-select")?.value || selectedBetweenJingleId || null,
-    trackFadeEnabled: $("track-fade-enabled").checked,
-    trackFadeOut: clampNumber($("track-fade-out-time").value, 0.1, 10, 2),
-    trackFadeIn: clampNumber($("track-fade-in-time").value, 0.1, 10, 2)
+    betweenJingleId: $("between-jingle-select")?.value || selectedBetweenJingleId || null
   };
 }
 
@@ -59,11 +53,8 @@ function saveAutoDJSettings() {
   selectedBetweenJingleId = settings.betweenJingleId;
 
   $("jingle-frequency").value = settings.frequency;
-  $("jingle-fade-out").value = settings.fadeOut;
-  $("jingle-fade-in").value = settings.fadeIn;
-  $("duck-amount").value = settings.duckDb;
-  $("track-fade-out-time").value = settings.trackFadeOut;
-  $("track-fade-in-time").value = settings.trackFadeIn;
+  $("fade-out-time").value = settings.fadeOut;
+  $("fade-in-time").value = settings.fadeIn;
 
   try {
     localStorage.setItem(AUTODJ_SETTINGS_KEY, JSON.stringify(settings));
@@ -83,57 +74,34 @@ function loadAutoDJSettings() {
 
   $("jingle-mode").value = settings.mode === "duck" ? "duck" : "between";
   $("jingle-frequency").value = Math.round(clampNumber(settings.frequency, 1, 1000, 2));
-  $("jingle-fade-out").value = clampNumber(settings.fadeOut, 0.1, 10, 2);
-  $("jingle-fade-in").value = clampNumber(settings.fadeIn, 0.1, 10, 2);
-  $("duck-amount").value = clampNumber(settings.duckDb, 0, 40, 12);
+  $("fade-out-time").value = clampNumber(settings.fadeOut, 0.1, 10, 2);
 
-  $("track-fade-enabled").checked = settings.trackFadeEnabled === true;
-  $("track-fade-out-time").value = clampNumber(settings.trackFadeOut, 0.1, 10, 2);
-  $("track-fade-in-time").value = clampNumber(settings.trackFadeIn, 0.1, 10, 2);
+  $("fade-in-time").value = clampNumber(settings.fadeIn, 0.1, 10, 2);
 
   selectedDuckJingleId = settings.duckJingleId || null;
   selectedBetweenJingleId = settings.betweenJingleId || null;
 
   updateJingleModeControls();
-  updateTrackFadeControls();
 }
 
-function updateTrackFadeControls() {
-  $("track-fade-settings").classList.toggle(
-    "hidden",
-    !$("track-fade-enabled").checked
-  );
-}
-function cancelMusicFade() {
+function fadeMusicVolume(targetVolume, durationSeconds) {
   volumeFadeToken++;
+  const token = volumeFadeToken;
 
   if (volumeFadeFrame) {
     cancelAnimationFrame(volumeFadeFrame);
     volumeFadeFrame = 0;
   }
 
-  if (volumeFadeResolve) {
-    const resolve = volumeFadeResolve;
-    volumeFadeResolve = null;
-    resolve(false);
-  }
-}
-
-function fadeMusicVolume(targetVolume, durationSeconds) {
-  cancelMusicFade();
-  const token = volumeFadeToken;
-
   const startVolume = audio.volume;
   const target = clampNumber(targetVolume, 0, 1, baseVolume);
   const duration = clampNumber(durationSeconds, 0.1, 10, 2) * 1000;
 
   return new Promise(resolve => {
-    volumeFadeResolve = resolve;
     const startTime = performance.now();
 
     function step(now) {
       if (token !== volumeFadeToken) {
-        if (volumeFadeResolve === resolve) volumeFadeResolve = null;
         resolve(false);
         return;
       }
@@ -148,8 +116,6 @@ function fadeMusicVolume(targetVolume, durationSeconds) {
       } else {
         volumeFadeFrame = 0;
         audio.volume = target;
-
-        if (volumeFadeResolve === resolve) volumeFadeResolve = null;
         resolve(true);
       }
     }
@@ -226,30 +192,12 @@ async function loadTracks() {
 }
 function playTrack(index) {
   if (index < 0 || index >= tracks.length) return;
-
-  cancelMusicFade();
-  trackFadeStarted = false;
-
   currentIndex = index;
   const t = tracks[index];
-  const settings = getAutoDJSettings();
-
-  const shouldFadeIn = settings.trackFadeEnabled && !jingleBusy;
-
-  audio.volume = shouldFadeIn ? 0 : baseVolume;
-
   audio.src = trackUrl(t);
   $("now-title").textContent = t.title;
   $("now-artist").textContent = t.artist || "Неизвестный исполнитель";
-
-  audio.play().then(() => {
-    if (shouldFadeIn) {
-      fadeMusicVolume(baseVolume, settings.trackFadeIn);
-    }
-  }).catch(err => {
-    console.error(err);
-    toast("Не удалось воспроизвести файл. Проверь Public bucket.");
-  });
+  audio.play().catch(err => { console.error(err); toast("Не удалось воспроизвести файл. Проверь Public bucket."); });
 }
 function playTrackById(id) {
   const index = tracks.findIndex(t => t.id === id);
@@ -257,32 +205,15 @@ function playTrackById(id) {
   else playTrack(index);
 }
 function playNext() {
-  let nextIndex = -1;
-
   if (activeQueue && activeQueue.length) {
     const currentId = tracks[currentIndex]?.id;
     const queueIndex = activeQueue.indexOf(currentId);
     const nextId = activeQueue[(queueIndex + 1 + activeQueue.length) % activeQueue.length];
-    nextIndex = tracks.findIndex(t => t.id === nextId);
-
-    if (nextIndex < 0) activeQueue = null;
+    const nextIndex = tracks.findIndex(t => t.id === nextId);
+    if (nextIndex >= 0) return playTrack(nextIndex);
+    activeQueue = null;
   }
-
-  if (nextIndex < 0 && tracks.length) {
-    nextIndex = (currentIndex + 1) % tracks.length;
-  }
-
-  if (nextIndex < 0) return;
-
-  const settings = getAutoDJSettings();
-
-  if (settings.trackFadeEnabled && !audio.paused && audio.src && !jingleBusy) {
-    fadeMusicVolume(0, settings.trackFadeOut).then(completed => {
-      if (completed) playTrack(nextIndex);
-    });
-  } else {
-    playTrack(nextIndex);
-  }
+  if (tracks.length) playTrack((currentIndex + 1) % tracks.length);
 }
 function playPrevious() {
   if (!tracks.length) return;
@@ -558,7 +489,7 @@ $("next-button").addEventListener("click",playNext);
 $("prev-button").addEventListener("click",playPrevious);
 $("volume").addEventListener("input", e => {
   baseVolume = clampNumber(e.target.value, 0, 1, 0.8);
-  audio.volume = musicDucked ? baseVolume * Math.pow(10, -getAutoDJSettings().duckDb / 20) : baseVolume;
+  audio.volume = musicDucked ? baseVolume * 0.22 : baseVolume;
 });
 $("seek").addEventListener("input",e => {
   if(Number.isFinite(audio.duration)) audio.currentTime = audio.duration * Number(e.target.value) / 100;
@@ -566,32 +497,7 @@ $("seek").addEventListener("input",e => {
 audio.addEventListener("timeupdate",() => {
   $("current-time").textContent = formatTime(audio.currentTime);
   $("total-time").textContent = formatTime(audio.duration);
-
-  if (Number.isFinite(audio.duration) && audio.duration > 0) {
-    $("seek").value = audio.currentTime / audio.duration * 100;
-  }
-
-  const settings = getAutoDJSettings();
-
-  if (
-    settings.trackFadeEnabled &&
-    !trackFadeStarted &&
-    !audio.paused &&
-    !jingleBusy &&
-    Number.isFinite(audio.duration) &&
-    audio.duration > 0
-  ) {
-    const remaining = audio.duration - audio.currentTime;
-
-    if (remaining <= settings.trackFadeOut) {
-      trackFadeStarted = true;
-
-      fadeMusicVolume(
-        0,
-        Math.max(0.1, Math.min(settings.trackFadeOut, remaining))
-      );
-    }
-  }
+  if(Number.isFinite(audio.duration) && audio.duration > 0) $("seek").value = audio.currentTime / audio.duration * 100;
 });
 audio.addEventListener("play",() => { $("play-button").textContent = "Ⅱ"; renderTracks(); });
 audio.addEventListener("pause",() => { $("play-button").textContent = "▶"; renderTracks(); });
@@ -607,8 +513,8 @@ function updateJingleModeControls() {
 
   $("between-jingle-setting").classList.toggle("hidden", mode !== "between");
   $("duck-jingle-setting").classList.toggle("hidden", mode !== "duck");
-  $("duck-settings").classList.toggle("hidden", mode !== "duck");
 }
+
 function renderJingleSelectors() {
   const betweenSelect = $("between-jingle-select");
   const duckSelect = $("duck-jingle-select");
@@ -879,8 +785,10 @@ async function handleAutoDJEnded() {
   musicDucked = true;
 
   // Начинаем Fade Out одновременно с запуском джингла
-  const duckTarget = baseVolume * Math.pow(10, -settings.duckDb / 20);
-  const fadeOutPromise = fadeMusicVolume(duckTarget, settings.fadeOut);
+  const fadeOutPromise = fadeMusicVolume(
+    baseVolume * 0.22,
+    settings.fadeOut
+  );
 
   // Обработчик устанавливается до запуска аудио
   jingleAudio.onended = async () => {
@@ -924,16 +832,11 @@ $("autodj-start").addEventListener("click", startAutoDJ);
 $("autodj-stop").addEventListener("click", stopAutoDJ);
 $("jingle-upload").addEventListener("click", uploadJingle);
 
-["jingle-mode", "jingle-frequency", "jingle-fade-out", "jingle-fade-in", "duck-amount", "track-fade-out-time", "track-fade-in-time"].forEach(id => {
+["jingle-mode", "jingle-frequency", "fade-out-time", "fade-in-time"].forEach(id => {
   $(id).addEventListener("change", () => {
     if (id === "jingle-mode") updateJingleModeControls();
     saveAutoDJSettings();
   });
-});
-
-$("track-fade-enabled").addEventListener("change", () => {
-  updateTrackFadeControls();
-  saveAutoDJSettings();
 });
 
 $("between-jingle-select").addEventListener("change", () => {
@@ -945,7 +848,6 @@ $("duck-jingle-select").addEventListener("change", () => {
   selectedDuckJingleId = $("duck-jingle-select").value || null;
   saveAutoDJSettings();
 });
-
 
 $("jingle-file").addEventListener("change", () => {
   const file = $("jingle-file").files[0];
