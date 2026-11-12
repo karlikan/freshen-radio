@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
@@ -74,6 +74,35 @@
 <div class="search-row"><input id="search-input" type="search" placeholder="Поиск по названию или исполнителю..."></div>
 <div id="library-list" class="track-list"><div class="empty-state">Загружаем медиатеку...</div></div>
 <div id="library-message" class="library-message"></div>
+
+<section class="playlist-section panel">
+  <div class="section-heading">
+    <div><div class="eyebrow">PLAYLIST MANAGEMENT</div><h2>Плейлисты</h2></div>
+    <span class="admin-tag">CLOUD</span>
+  </div>
+  <div id="playlist-admin" class="playlist-admin hidden">
+    <form id="playlist-create-form" class="playlist-create">
+      <input id="playlist-name" type="text" placeholder="Название нового плейлиста" maxlength="80" required>
+      <button class="button button-primary" type="submit">＋ Создать</button>
+    </form>
+  </div>
+  <div class="playlist-layout">
+    <div class="playlist-sidebar">
+      <div id="playlist-list" class="playlist-list"><div class="empty-state">Загружаем плейлисты...</div></div>
+    </div>
+    <div class="playlist-content">
+      <div class="playlist-toolbar">
+        <h3 id="selected-playlist-name">Выбери плейлист</h3>
+        <div class="playlist-actions">
+          <button id="playlist-play" class="button button-primary" disabled>▶ Слушать</button>
+          <button id="playlist-delete" class="button button-quiet hidden">Удалить</button>
+        </div>
+      </div>
+      <p id="playlist-hint" class="playlist-hint">Создай плейлист или выбери существующий.</p>
+      <div id="playlist-track-list" class="playlist-track-list"></div>
+    </div>
+  </div>
+</section>
 </section>
 
 <footer><span>FRESHEN MUSIC RADIO © 2026</span><span>Облачная медиатека · Версия 0.2</span></footer>

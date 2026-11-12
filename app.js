@@ -1,4 +1,4 @@
-﻿// FRESHEN MUSIC RADIO 0.2
+// FRESHEN MUSIC RADIO 0.2
 // Используй только Publishable key. Никогда не вставляй service_role или secret key.
 const SUPABASE_URL = "https://dyuybnfbtcvtkkyauqmd.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iqNXYa5VEjr81zOaQvS0uQ_QXyvV-2o";
@@ -11,6 +11,10 @@ const audio = $("audio-player");
 let tracks = [];
 let currentIndex = -1;
 let currentUser = null;
+let playlists = [];
+let selectedPlaylistId = null;
+let selectedPlaylistTracks = [];
+let activeQueue = null;
 let toastTimer;
 
 function toast(message) {
@@ -57,10 +61,11 @@ function renderTracks() {
       <button class="track-play" data-play="${t.id}">${active ? "Ⅱ" : "▶"}</button>
       <div class="track-info"><strong>${escapeHtml(t.title)}</strong><small>${escapeHtml(t.artist || "Неизвестный исполнитель")}</small></div>
       <span class="track-duration">${t.duration ? formatTime(t.duration) : "--:--"}</span>
-      ${currentUser ? `<button class="delete-track" data-delete="${t.id}" title="Удалить">×</button>` : ""}
+      ${currentUser ? `<button class="mini-action" data-add-playlist="${t.id}" title="Добавить в выбранный плейлист">＋</button><button class="delete-track" data-delete="${t.id}" title="Удалить">×</button>` : ""}
     </div>`;
   }).join("");
-  list.querySelectorAll("[data-play]").forEach(b => b.addEventListener("click", () => playTrackById(b.dataset.play)));
+  list.querySelectorAll("[data-play]").forEach(b => b.addEventListener("click", () => { activeQueue = null; playTrackById(b.dataset.play); }));
+  list.querySelectorAll("[data-add-playlist]").forEach(b => b.addEventListener("click", () => addTrackToPlaylist(b.dataset.addPlaylist)));
   list.querySelectorAll("[data-delete]").forEach(b => b.addEventListener("click", () => deleteTrack(b.dataset.delete)));
 }
 async function loadTracks() {
@@ -90,6 +95,14 @@ function playTrackById(id) {
   else playTrack(index);
 }
 function playNext() {
+  if (activeQueue && activeQueue.length) {
+    const currentId = tracks[currentIndex]?.id;
+    const queueIndex = activeQueue.indexOf(currentId);
+    const nextId = activeQueue[(queueIndex + 1 + activeQueue.length) % activeQueue.length];
+    const nextIndex = tracks.findIndex(t => t.id === nextId);
+    if (nextIndex >= 0) return playTrack(nextIndex);
+    activeQueue = null;
+  }
   if (tracks.length) playTrack((currentIndex + 1) % tracks.length);
 }
 function playPrevious() {
@@ -107,6 +120,7 @@ async function deleteTrack(id) {
   if (dbError) {
     toast(`Файл удален, но запись осталась: ${dbError.message}`);
     await loadTracks();
+    await loadPlaylists();
     return;
   }
   if (tracks[currentIndex]?.id === id) {
@@ -128,6 +142,153 @@ function getDuration(file) {
   });
 }
 
+async function loadPlaylists() {
+  const {data,error} = await client.from("playlists").select("*").order("created_at",{ascending:true});
+  if (error) {
+    $("playlist-list").innerHTML = `<div class="empty-state">Ошибка загрузки: ${escapeHtml(error.message)}</div>`;
+    return;
+  }
+  playlists = data || [];
+  if (!playlists.some(p => p.id === selectedPlaylistId)) selectedPlaylistId = playlists[0]?.id || null;
+  renderPlaylists();
+  if (selectedPlaylistId) await loadPlaylistTracks();
+  else renderPlaylistTracks();
+}
+
+function renderPlaylists() {
+  const list = $("playlist-list");
+  if (!playlists.length) {
+    list.innerHTML = '<div class="empty-state">Плейлистов пока нет.</div>';
+    $("selected-playlist-name").textContent = "Выбери плейлист";
+    return;
+  }
+  list.innerHTML = playlists.map(p => `<button class="playlist-item ${p.id === selectedPlaylistId ? "active" : ""}" data-playlist="${p.id}">${escapeHtml(p.name)}</button>`).join("");
+  list.querySelectorAll("[data-playlist]").forEach(b => b.addEventListener("click", async () => {
+    selectedPlaylistId = b.dataset.playlist;
+    activeQueue = null;
+    renderPlaylists();
+    await loadPlaylistTracks();
+  }));
+}
+
+async function loadPlaylistTracks() {
+  if (!selectedPlaylistId) return renderPlaylistTracks();
+  const playlist = playlists.find(p => p.id === selectedPlaylistId);
+  $("selected-playlist-name").textContent = playlist?.name || "Плейлист";
+  const {data,error} = await client.from("playlist_tracks")
+    .select("id,playlist_id,track_id,position,tracks(id,title,artist,duration,file_path)")
+    .eq("playlist_id",selectedPlaylistId)
+    .order("position",{ascending:true});
+  if (error) {
+    $("playlist-track-list").innerHTML = `<div class="empty-state">Ошибка: ${escapeHtml(error.message)}</div>`;
+    return;
+  }
+  selectedPlaylistTracks = data || [];
+  renderPlaylistTracks();
+}
+
+function renderPlaylistTracks() {
+  const list = $("playlist-track-list");
+  const isAdmin = !!currentUser;
+  $("playlist-admin").classList.toggle("hidden",!isAdmin);
+  $("playlist-delete").classList.toggle("hidden",!isAdmin || !selectedPlaylistId);
+  $("playlist-play").disabled = !selectedPlaylistTracks.length;
+
+  if (!selectedPlaylistId) {
+    list.innerHTML = "";
+    $("playlist-hint").textContent = "Создай плейлист или выбери существующий.";
+    return;
+  }
+
+  $("playlist-hint").textContent = selectedPlaylistTracks.length + " трек(ов) в плейлисте";
+  if (!selectedPlaylistTracks.length) {
+    list.innerHTML = '<div class="empty-state">Здесь пока пусто. Добавь песни из медиатеки.</div>';
+    return;
+  }
+
+  list.innerHTML = selectedPlaylistTracks.map((item,i) => {
+    const t = item.tracks;
+    if (!t) return "";
+    return `<div class="playlist-track-row">
+      <span class="track-number">${String(i+1).padStart(2,"0")}</span>
+      <div class="track-info"><strong>${escapeHtml(t.title)}</strong><small>${escapeHtml(t.artist || "Неизвестный исполнитель")}</small></div>
+      <span class="track-duration">${t.duration ? formatTime(t.duration) : "--:--"}</span>
+      ${isAdmin ? `<button class="mini-action" data-up="${item.id}" ${i===0?"disabled":""}>↑</button><button class="mini-action" data-down="${item.id}" ${i===selectedPlaylistTracks.length-1?"disabled":""}>↓</button><button class="delete-track" data-remove="${item.id}">×</button>` : ""}
+    </div>`;
+  }).join("");
+
+  list.querySelectorAll("[data-up]").forEach(b => b.addEventListener("click",() => movePlaylistTrack(b.dataset.up,-1)));
+  list.querySelectorAll("[data-down]").forEach(b => b.addEventListener("click",() => movePlaylistTrack(b.dataset.down,1)));
+  list.querySelectorAll("[data-remove]").forEach(b => b.addEventListener("click",() => removePlaylistTrack(b.dataset.remove)));
+}
+
+async function createPlaylist(e) {
+  e.preventDefault();
+  if (!currentUser) return toast("Сначала войди в аккаунт");
+  const name = $("playlist-name").value.trim();
+  if (!name) return;
+  const {data,error} = await client.from("playlists").insert({name,created_by:currentUser.id}).select().single();
+  if (error) return toast("Ошибка создания: " + error.message);
+  $("playlist-create-form").reset();
+  selectedPlaylistId = data.id;
+  await loadPlaylists();
+  toast("Плейлист создан");
+}
+
+async function addTrackToPlaylist(id) {
+  if (!currentUser) return toast("Сначала войди в аккаунт");
+  if (!selectedPlaylistId) return toast("Сначала создай или выбери плейлист");
+  const maxPosition = selectedPlaylistTracks.reduce((m,x) => Math.max(m,x.position || 0),-1);
+  const {error} = await client.from("playlist_tracks").insert({
+    playlist_id:selectedPlaylistId,track_id:id,position:maxPosition+1
+  });
+  if (error) return toast(error.code === "23505" ? "Этот трек уже есть в плейлисте" : error.message);
+  await loadPlaylistTracks();
+  toast("Трек добавлен в плейлист");
+}
+
+async function removePlaylistTrack(id) {
+  if (!currentUser) return;
+  const {error} = await client.from("playlist_tracks").delete().eq("id",id);
+  if (error) return toast(error.message);
+  await loadPlaylistTracks();
+}
+
+async function movePlaylistTrack(id,delta) {
+  if (!currentUser) return;
+  const index = selectedPlaylistTracks.findIndex(x => x.id === id);
+  const target = index + delta;
+  if (index < 0 || target < 0 || target >= selectedPlaylistTracks.length) return;
+  const rows = [...selectedPlaylistTracks];
+  [rows[index],rows[target]] = [rows[target],rows[index]];
+  for (let i=0;i<rows.length;i++) {
+    const {error} = await client.from("playlist_tracks").update({position:i}).eq("id",rows[i].id);
+    if (error) return toast("Ошибка изменения порядка: " + error.message);
+  }
+  await loadPlaylistTracks();
+}
+
+async function deletePlaylist() {
+  if (!currentUser || !selectedPlaylistId) return;
+  const p = playlists.find(x => x.id === selectedPlaylistId);
+  if (!confirm(`Удалить плейлист «${p?.name || ""}»? Сами треки останутся в медиатеке.`)) return;
+  const {error} = await client.from("playlists").delete().eq("id",selectedPlaylistId);
+  if (error) return toast(error.message);
+  selectedPlaylistId = null;
+  activeQueue = null;
+  await loadPlaylists();
+  toast("Плейлист удален");
+}
+
+function playSelectedPlaylist() {
+  if (!selectedPlaylistTracks.length) return;
+  activeQueue = selectedPlaylistTracks.map(x => x.track_id).filter(id => tracks.some(t => t.id === id));
+  const firstIndex = tracks.findIndex(t => t.id === activeQueue[0]);
+  if (firstIndex >= 0) {
+    playTrack(firstIndex);
+    toast("Запущен плейлист");
+  }
+}
 $("login-open").addEventListener("click", () => {
   $("login-modal").classList.remove("hidden");
   $("login-email").focus();
@@ -158,7 +319,10 @@ $("logout-button").addEventListener("click",async () => {
   toast("Вы вышли из аккаунта");
   renderTracks();
 });
-$("refresh-button").addEventListener("click",loadTracks);
+$("refresh-button").addEventListener("click",async () => { await loadTracks(); await loadPlaylists(); });
+$("playlist-create-form").addEventListener("submit",createPlaylist);
+$("playlist-delete").addEventListener("click",deletePlaylist);
+$("playlist-play").addEventListener("click",playSelectedPlaylist);
 $("search-input").addEventListener("input",renderTracks);
 
 $("audio-file").addEventListener("change",() => {
@@ -234,6 +398,7 @@ async function init() {
     setAuthUI(session?.user || null);
     setConnection(true,"SUPABASE ONLINE");
     await loadTracks();
+    await loadPlaylists();
     client.auth.onAuthStateChange((_event,sessionNow) => {
       setAuthUI(sessionNow?.user || null);
       renderTracks();
