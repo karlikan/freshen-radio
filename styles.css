@@ -1197,8 +1197,8 @@ footer {
 .orb-glow {
     position: absolute;
     z-index: -1;
-    width: 145px;
-    height: 145px;
+    width: 168px;
+    height: 168px;
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
@@ -1210,8 +1210,8 @@ footer {
 .orb-logo {
     display: block;
     position: relative;
-    width: 158px;
-    height: 158px;
+    width: 180px;
+    height: 180px;
     object-fit: contain;
     filter: drop-shadow(0 0 12px rgba(216,182,92,.18));
     animation: freshenFloat 7s ease-in-out infinite;
@@ -1239,8 +1239,8 @@ footer {
     75% { transform: translate(-3px, -1px); }
 }
 @media (max-width: 650px) {
-    .orb-logo { width: 96px; height: 96px; }
-    .orb-glow { width: 105px; height: 105px; }
+    .orb-logo { width: 108px; height: 108px; }
+    .orb-glow { width: 118px; height: 118px; }
 }
 @media (prefers-reduced-motion: reduce) {
     .orb-logo, .orb-glow { animation: none !important; }
