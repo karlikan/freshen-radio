@@ -13,7 +13,7 @@
 <div class="ambient"></div>
 <main class="shell">
 <header class="topbar">
-<a class="brand" href="#"><span class="brand-mark">F</span><span>FRESHEN <b>MUSIC RADIO</b><small>YOUR PERSONAL RADIO SPACE</small></span></a>
+<a class="brand" href="#"><img class="brand-logo" src="Freshen Logo tpr.png" alt="Freshen Music Radio"><span>FRESHEN <b>MUSIC RADIO</b><small>INDEPENDENT INTERNET RADIO</small></span></a>
 <div class="top-actions">
 <span id="connection-status" class="status"><i></i> Подключение...</span>
 <button id="login-open" class="button button-quiet">Войти</button>
@@ -24,8 +24,8 @@
 <section class="hero">
 <div>
 <div class="eyebrow">PERSONAL MUSIC LIBRARY</div>
-<h1>Музыка.<br><em>Без лишнего.</em></h1>
-<p>Твоя облачная музыкальная библиотека. Загружай треки, слушай их и управляй коллекцией из одного места.</p>
+<h1>FRESHEN<br><em>MUSIC RADIO</em></h1>
+<p>Независимое интернет-радио, созданное музыкантами. Мы тщательно отбираем музыку, открываем интересные имена и оставляем за бортом хайп ради хайпа. Только то, что действительно стоит слушать.</p>
 </div>
 <div class="hero-orb"><div class="orb-ring"></div><div class="orb-core">FMR</div><span class="orb-caption">FRESHEN MUSIC RADIO</span></div>
 </section>
@@ -124,6 +124,18 @@
       </select>
     </label>
 
+    <label id="between-jingle-setting">Джингл между песнями
+      <select id="between-jingle-select">
+        <option value="">Загрузка джинглов...</option>
+      </select>
+    </label>
+
+    <label id="duck-jingle-setting" class="hidden">Джингл с приглушением
+      <select id="duck-jingle-select">
+        <option value="">Загрузка джинглов...</option>
+      </select>
+    </label>
+
     <label>Интервал джинглов (треков)
       <input id="jingle-frequency" type="number" min="1" max="1000" step="1" value="2">
     </label>
@@ -161,7 +173,7 @@
     <div class="empty-state">Джинглов пока нет.</div>
   </div>
 </section>
-<footer><span>FRESHEN MUSIC RADIO © 2026</span><span>FRESHEN MUSIC RADIO · Версия 1.0</span></footer>
+<footer><span>FRESHEN MUSIC RADIO © 2026</span><span>FRESHEN MUSIC RADIO · Версия 1.1</span></footer>
 </main>
 
 <div id="login-modal" class="modal hidden">
