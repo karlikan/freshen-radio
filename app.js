@@ -1,4 +1,4 @@
-// FRESHEN MUSIC RADIO 1.0
+// FRESHEN MUSIC RADIO 1.1
 // Используй только Publishable key. Никогда не вставляй service_role или secret key.
 const SUPABASE_URL = "https://dyuybnfbtcvtkkyauqmd.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iqNXYa5VEjr81zOaQvS0uQ_QXyvV-2o";
@@ -16,6 +16,8 @@ let selectedPlaylistId = null;
 let selectedPlaylistTracks = [];
 let activeQueue = null;
 let jingles = [];
+let selectedDuckJingleId = null;
+let selectedBetweenJingleId = null;
 let autoDJEnabled = false;
 let songsSinceJingle = 0;
 let baseVolume = 0.8;
@@ -38,12 +40,17 @@ function getAutoDJSettings() {
     mode: $("jingle-mode").value === "duck" ? "duck" : "between",
     frequency: Math.round(clampNumber($("jingle-frequency").value, 1, 1000, 2)),
     fadeOut: clampNumber($("fade-out-time").value, 0.1, 10, 2),
-    fadeIn: clampNumber($("fade-in-time").value, 0.1, 10, 2)
+    fadeIn: clampNumber($("fade-in-time").value, 0.1, 10, 2),
+    duckJingleId: $("duck-jingle-select")?.value || selectedDuckJingleId || null,
+    betweenJingleId: $("between-jingle-select")?.value || selectedBetweenJingleId || null
   };
 }
 
 function saveAutoDJSettings() {
   const settings = getAutoDJSettings();
+
+  selectedDuckJingleId = settings.duckJingleId;
+  selectedBetweenJingleId = settings.betweenJingleId;
 
   $("jingle-frequency").value = settings.frequency;
   $("fade-out-time").value = settings.fadeOut;
@@ -68,7 +75,13 @@ function loadAutoDJSettings() {
   $("jingle-mode").value = settings.mode === "duck" ? "duck" : "between";
   $("jingle-frequency").value = Math.round(clampNumber(settings.frequency, 1, 1000, 2));
   $("fade-out-time").value = clampNumber(settings.fadeOut, 0.1, 10, 2);
+
   $("fade-in-time").value = clampNumber(settings.fadeIn, 0.1, 10, 2);
+
+  selectedDuckJingleId = settings.duckJingleId || null;
+  selectedBetweenJingleId = settings.betweenJingleId || null;
+
+  updateJingleModeControls();
 }
 
 function fadeMusicVolume(targetVolume, durationSeconds) {
@@ -491,7 +504,57 @@ audio.addEventListener("pause",() => { $("play-button").textContent = "▶"; ren
 audio.addEventListener("ended",handleAutoDJEnded);
 
 
-// FRESHEN MUSIC RADIO 1.0: AUTODJ AND JINGLES
+// FRESHEN MUSIC RADIO 1.1: AUTODJ AND JINGLES
+
+// FRESHEN MUSIC RADIO 1.1: INDIVIDUAL JINGLE SELECTION
+
+function updateJingleModeControls() {
+  const mode = $("jingle-mode").value;
+
+  $("between-jingle-setting").classList.toggle("hidden", mode !== "between");
+  $("duck-jingle-setting").classList.toggle("hidden", mode !== "duck");
+}
+
+function renderJingleSelectors() {
+  const betweenSelect = $("between-jingle-select");
+  const duckSelect = $("duck-jingle-select");
+
+  if (!betweenSelect || !duckSelect) return;
+
+  const previousBetween = selectedBetweenJingleId || betweenSelect.value;
+  const previousDuck = selectedDuckJingleId || duckSelect.value;
+
+  function fillSelect(select, previousId) {
+    select.innerHTML = "";
+
+    if (!jingles.length) {
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = "Нет загруженных джинглов";
+      select.appendChild(option);
+      return "";
+    }
+
+    jingles.forEach(jingle => {
+      const option = document.createElement("option");
+      option.value = jingle.id;
+      option.textContent = jingle.title;
+      select.appendChild(option);
+    });
+
+    const exists = jingles.some(jingle => jingle.id === previousId);
+    const selectedId = exists ? previousId : jingles[0].id;
+
+    select.value = selectedId;
+    return selectedId;
+  }
+
+  selectedBetweenJingleId = fillSelect(betweenSelect, previousBetween);
+  selectedDuckJingleId = fillSelect(duckSelect, previousDuck);
+
+  saveAutoDJSettings();
+  updateJingleModeControls();
+}
 const jingleAudio = new Audio();
 jingleAudio.preload = "auto";
 
@@ -499,6 +562,7 @@ function renderJingles() {
   const list = $("jingle-list");
   if (!list) return;
   $("jingle-count").textContent = jingles.length + " JINGLES";
+  renderJingleSelectors();
 
   if (!jingles.length) {
     list.innerHTML = '<div class="empty-state">Джинглов пока нет.</div>';
@@ -682,7 +746,11 @@ async function handleAutoDJEnded() {
 
   songsSinceJingle = 0;
 
-  const jingle = jingles[Math.floor(Math.random() * jingles.length)];
+  const selectedJingleId = settings.mode === "duck"
+    ? selectedDuckJingleId
+    : selectedBetweenJingleId;
+
+  const jingle = jingles.find(item => item.id === selectedJingleId) || jingles[0];
 
   jingleBusy = true;
   jingleAudio.src = trackUrl(jingle);
@@ -766,8 +834,19 @@ $("jingle-upload").addEventListener("click", uploadJingle);
 
 ["jingle-mode", "jingle-frequency", "fade-out-time", "fade-in-time"].forEach(id => {
   $(id).addEventListener("change", () => {
+    if (id === "jingle-mode") updateJingleModeControls();
     saveAutoDJSettings();
   });
+});
+
+$("between-jingle-select").addEventListener("change", () => {
+  selectedBetweenJingleId = $("between-jingle-select").value || null;
+  saveAutoDJSettings();
+});
+
+$("duck-jingle-select").addEventListener("change", () => {
+  selectedDuckJingleId = $("duck-jingle-select").value || null;
+  saveAutoDJSettings();
 });
 
 $("jingle-file").addEventListener("change", () => {

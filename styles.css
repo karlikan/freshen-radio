@@ -1125,3 +1125,60 @@ footer {
 .radio-options input[type="number"]:focus {
     border-color: #d8b65c;
 }
+/* FRESHEN MUSIC RADIO 1.1 */
+
+.brand-logo {
+    width: 54px;
+    height: 54px;
+    flex: 0 0 54px;
+    object-fit: contain;
+    display: block;
+}
+
+.brand {
+    gap: 15px;
+}
+
+.hero h1 {
+    font-size: clamp(42px, 6vw, 70px);
+    letter-spacing: -3px;
+    line-height: 1.02;
+}
+
+.hero p {
+    max-width: 560px;
+    line-height: 1.9;
+}
+
+.radio-options select {
+    min-width: 230px;
+    max-width: 100%;
+    font: 11px Manrope, Arial, sans-serif;
+}
+
+.radio-options label {
+    min-width: 210px;
+}
+
+@media(max-width:650px) {
+    .brand-logo {
+        width: 46px;
+        height: 46px;
+        flex-basis: 46px;
+    }
+
+    .hero h1 {
+        font-size: 39px;
+        letter-spacing: -2px;
+    }
+
+    .hero p {
+        max-width: 100%;
+    }
+
+    .radio-options label,
+    .radio-options select {
+        width: 100%;
+        min-width: 0;
+    }
+}
