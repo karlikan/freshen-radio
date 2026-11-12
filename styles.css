@@ -1182,22 +1182,7 @@ footer {
         min-width: 0;
     }
 }
-/* FRESHEN MUSIC RADIO 1.1 - LOGO ANIMATION */
-
-.player-art {
-    overflow: hidden;
-    padding: 0;
-    background: #101010 !important;
-}
-
-.player-art-logo {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: inherit;
-}
-
+/* FRESHEN MUSIC RADIO 1.2 - LOGO */
 .hero-orb {
     border: 0 !important;
     background: transparent !important;
@@ -1205,12 +1190,10 @@ footer {
     overflow: visible;
     isolation: isolate;
 }
-
 .hero-orb .orb-ring,
 .hero-orb .orb-core {
     display: none !important;
 }
-
 .orb-glow {
     position: absolute;
     z-index: -1;
@@ -1220,17 +1203,10 @@ footer {
     top: 50%;
     transform: translate(-50%, -50%);
     border-radius: 50%;
-    background: radial-gradient(
-        circle,
-        rgba(216,182,92,.34) 0%,
-        rgba(216,182,92,.16) 38%,
-        rgba(216,182,92,.045) 65%,
-        transparent 78%
-    );
+    background: radial-gradient(circle, rgba(216,182,92,.34), rgba(216,182,92,.16) 38%, rgba(216,182,92,.045) 65%, transparent 78%);
     filter: blur(15px);
     animation: freshenGlow 4.8s ease-in-out infinite;
 }
-
 .orb-logo {
     display: block;
     position: relative;
@@ -1239,50 +1215,33 @@ footer {
     object-fit: contain;
     filter: drop-shadow(0 0 12px rgba(216,182,92,.18));
     animation: freshenFloat 7s ease-in-out infinite;
-    will-change: transform;
 }
-
+.player-art {
+    overflow: hidden;
+    padding: 0;
+    background: #101010 !important;
+}
+.player-art-logo {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+}
 @keyframes freshenGlow {
-    0%, 100% {
-        opacity: .48;
-        transform: translate(-50%, -50%) scale(.88);
-    }
-    50% {
-        opacity: .9;
-        transform: translate(-50%, -50%) scale(1.12);
-    }
+    0%, 100% { opacity: .48; transform: translate(-50%, -50%) scale(.88); }
+    50% { opacity: .9; transform: translate(-50%, -50%) scale(1.12); }
 }
-
 @keyframes freshenFloat {
-    0%, 100% {
-        transform: translate(0, 0);
-    }
-    25% {
-        transform: translate(2px, -3px);
-    }
-    50% {
-        transform: translate(-2px, -5px);
-    }
-    75% {
-        transform: translate(-3px, -1px);
-    }
+    0%, 100% { transform: translate(0, 0); }
+    25% { transform: translate(2px, -3px); }
+    50% { transform: translate(-2px, -5px); }
+    75% { transform: translate(-3px, -1px); }
 }
-
 @media (max-width: 650px) {
-    .orb-logo {
-        width: 96px;
-        height: 96px;
-    }
-
-    .orb-glow {
-        width: 105px;
-        height: 105px;
-    }
+    .orb-logo { width: 96px; height: 96px; }
+    .orb-glow { width: 105px; height: 105px; }
 }
-
 @media (prefers-reduced-motion: reduce) {
-    .orb-logo,
-    .orb-glow {
-        animation: none !important;
-    }
+    .orb-logo, .orb-glow { animation: none !important; }
 }
