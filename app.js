@@ -25,6 +25,8 @@ let jingleBusy = false;
 let volumeFadeFrame = 0;
 let volumeFadeToken = 0;
 let musicDucked = false;
+let transitionFadeStarted = false;
+let transitionPending = false;
 
 const AUTODJ_SETTINGS_KEY = "freshen-radio-autodj-settings";
 
@@ -39,8 +41,12 @@ function getAutoDJSettings() {
   return {
     mode: $("jingle-mode").value === "duck" ? "duck" : "between",
     frequency: Math.round(clampNumber($("jingle-frequency").value, 1, 1000, 2)),
-    fadeOut: clampNumber($("fade-out-time").value, 0.1, 10, 2),
-    fadeIn: clampNumber($("fade-in-time").value, 0.1, 10, 2),
+    duckFadeOut: clampNumber($("duck-fade-out").value, 0.1, 10, 2),
+    duckFadeIn: clampNumber($("duck-fade-in").value, 0.1, 10, 2),
+    duckDb: clampNumber($("duck-volume-db").value, 0, 40, 12),
+    transitionEnabled: $("transition-enabled").checked,
+    transitionFadeOut: clampNumber($("transition-fade-out").value, 0.1, 10, 2),
+    transitionFadeIn: clampNumber($("transition-fade-in").value, 0.1, 10, 2),
     duckJingleId: $("duck-jingle-select")?.value || selectedDuckJingleId || null,
     betweenJingleId: $("between-jingle-select")?.value || selectedBetweenJingleId || null
   };
@@ -53,8 +59,6 @@ function saveAutoDJSettings() {
   selectedBetweenJingleId = settings.betweenJingleId;
 
   $("jingle-frequency").value = settings.frequency;
-  $("fade-out-time").value = settings.fadeOut;
-  $("fade-in-time").value = settings.fadeIn;
 
   try {
     localStorage.setItem(AUTODJ_SETTINGS_KEY, JSON.stringify(settings));
@@ -74,9 +78,14 @@ function loadAutoDJSettings() {
 
   $("jingle-mode").value = settings.mode === "duck" ? "duck" : "between";
   $("jingle-frequency").value = Math.round(clampNumber(settings.frequency, 1, 1000, 2));
-  $("fade-out-time").value = clampNumber(settings.fadeOut, 0.1, 10, 2);
 
-  $("fade-in-time").value = clampNumber(settings.fadeIn, 0.1, 10, 2);
+  $("duck-fade-out").value = clampNumber(settings.duckFadeOut ?? settings.fadeOut, 0.1, 10, 2);
+  $("duck-fade-in").value = clampNumber(settings.duckFadeIn ?? settings.fadeIn, 0.1, 10, 2);
+  $("duck-volume-db").value = clampNumber(settings.duckDb, 0, 40, 12);
+
+  $("transition-enabled").checked = settings.transitionEnabled === true;
+  $("transition-fade-out").value = clampNumber(settings.transitionFadeOut, 0.1, 10, 2);
+  $("transition-fade-in").value = clampNumber(settings.transitionFadeIn, 0.1, 10, 2);
 
   selectedDuckJingleId = settings.duckJingleId || null;
   selectedBetweenJingleId = settings.betweenJingleId || null;
@@ -84,6 +93,10 @@ function loadAutoDJSettings() {
   updateJingleModeControls();
 }
 
+function getDuckFactor() {
+  const db = clampNumber($("duck-volume-db").value, 0, 40, 12);
+  return Math.pow(10, -db / 20);
+}
 function fadeMusicVolume(targetVolume, durationSeconds) {
   volumeFadeToken++;
   const token = volumeFadeToken;
@@ -192,12 +205,45 @@ async function loadTracks() {
 }
 function playTrack(index) {
   if (index < 0 || index >= tracks.length) return;
+
   currentIndex = index;
   const t = tracks[index];
+  const useTransitionFadeIn = transitionPending;
+
+  transitionPending = false;
+  transitionFadeStarted = false;
+
+  if (useTransitionFadeIn) {
+    audio.volume = 0;
+  } else if (!musicDucked) {
+    audio.volume = baseVolume;
+  }
+
   audio.src = trackUrl(t);
+
+  const artwork = document.querySelector(".player-art-logo");
+  if (artwork) {
+    artwork.src = t.cover_path
+      ? client.storage.from(BUCKET).getPublicUrl(t.cover_path).data.publicUrl
+      : "Freshen Logo.png";
+
+    artwork.onerror = () => {
+      artwork.onerror = null;
+      artwork.src = "Freshen Logo.png";
+    };
+  }
+
   $("now-title").textContent = t.title;
   $("now-artist").textContent = t.artist || "Неизвестный исполнитель";
-  audio.play().catch(err => { console.error(err); toast("Не удалось воспроизвести файл. Проверь Public bucket."); });
+
+  audio.play().then(() => {
+    if (useTransitionFadeIn) {
+      fadeMusicVolume(baseVolume, getAutoDJSettings().transitionFadeIn);
+    }
+  }).catch(err => {
+    console.error(err);
+    toast("Не удалось воспроизвести файл. Проверь Public bucket.");
+  });
 }
 function playTrackById(id) {
   const index = tracks.findIndex(t => t.id === id);
@@ -224,7 +270,8 @@ async function deleteTrack(id) {
   if (!currentUser) return;
   const track = tracks.find(t => t.id === id);
   if (!track || !confirm(`Удалить «${track.title}» из медиатеки?`)) return;
-  const {error: storageError} = await client.storage.from(BUCKET).remove([track.file_path]);
+  const pathsToRemove = [track.file_path, track.cover_path].filter(Boolean);
+  const {error: storageError} = await client.storage.from(BUCKET).remove(pathsToRemove);
   if (storageError) return toast(`Ошибка удаления файла: ${storageError.message}`);
   const {error: dbError} = await client.from("tracks").delete().eq("id",id);
   if (dbError) {
@@ -441,46 +488,97 @@ $("audio-file").addEventListener("change",() => {
   if(file && !$("track-title").value) $("track-title").value = file.name.replace(/\.[^.]+$/,"");
 });
 
+$("cover-file").addEventListener("change", () => {
+  const file = $("cover-file").files[0];
+  $("cover-file-label").textContent = file ? file.name : "Добавить обложку (необязательно)";
+});
+
 $("upload-form").addEventListener("submit",async e => {
   e.preventDefault();
   if(!currentUser) return toast("Сначала войди в аккаунт");
+
   const file = $("audio-file").files[0];
+  const coverFile = $("cover-file").files[0];
   const title = $("track-title").value.trim();
   const artist = $("track-artist").value.trim();
   const message = $("upload-message");
   const button = $("upload-button");
+
   if(!file) { message.textContent = "Сначала выбери файл."; return; }
   if(file.size > MAX_FILE_SIZE) { message.textContent = "Файл больше 50 МБ."; return; }
+
+  if (coverFile) {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(coverFile.type)) {
+      message.textContent = "Обложка должна быть в формате JPG, PNG или WEBP.";
+      return;
+    }
+    if (coverFile.size > 10 * 1024 * 1024) {
+      message.textContent = "Обложка больше 10 МБ.";
+      return;
+    }
+  }
+
   const ext = (file.name.split(".").pop() || "mp3").toLowerCase().replace(/[^a-z0-9]/g,"");
   const path = `${Date.now()}-${crypto.randomUUID()}.${ext}`;
+  let coverPath = null;
+
   button.disabled = true;
   message.textContent = "Определяем длительность и загружаем файл...";
+
   const duration = await getDuration(file);
+
   const {error: uploadError} = await client.storage.from(BUCKET).upload(path,file,{
     cacheControl:"3600",upsert:false,contentType:file.type || "audio/mpeg"
   });
+
   if(uploadError) {
     button.disabled = false;
     message.textContent = `Ошибка загрузки: ${uploadError.message}`;
     return;
   }
+
+  if (coverFile) {
+    const imageExt = coverFile.type === "image/png" ? "png" :
+      coverFile.type === "image/webp" ? "webp" : "jpg";
+
+    coverPath = `${Date.now()}-${crypto.randomUUID()}.${imageExt}`;
+
+    const {error: coverError} = await client.storage.from(BUCKET).upload(coverPath,coverFile,{
+      cacheControl:"3600",upsert:false,contentType:coverFile.type
+    });
+
+    if (coverError) {
+      await client.storage.from(BUCKET).remove([path]);
+      button.disabled = false;
+      message.textContent = `Ошибка загрузки обложки: ${coverError.message}. Аудиофайл удален.`;
+      return;
+    }
+  }
+
   const {error: insertError} = await client.from("tracks").insert({
-    title,artist:artist || null,file_path:path,duration,is_jingle:false
+    title,
+    artist:artist || null,
+    file_path:path,
+    cover_path:coverPath,
+    duration,
+    is_jingle:false
   });
+
   if(insertError) {
-    await client.storage.from(BUCKET).remove([path]);
+    await client.storage.from(BUCKET).remove([path, ...(coverPath ? [coverPath] : [])]);
     button.disabled = false;
-    message.textContent = `Ошибка записи в базу: ${insertError.message}. Файл удален.`;
+    message.textContent = `Ошибка записи в базу: ${insertError.message}. Загруженные файлы удалены.`;
     return;
   }
+
   $("upload-form").reset();
   $("file-label").textContent = "Выбери аудиофайл";
+  $("cover-file-label").textContent = "Добавить обложку (необязательно)";
   message.textContent = "Готово! Трек добавлен.";
   button.disabled = false;
   toast("Трек успешно загружен");
   await loadTracks();
 });
-
 $("play-button").addEventListener("click",() => {
   if(!audio.src) return tracks.length ? playTrack(0) : toast("Сначала добавь треки");
   if(audio.paused) audio.play(); else audio.pause();
@@ -489,7 +587,7 @@ $("next-button").addEventListener("click",playNext);
 $("prev-button").addEventListener("click",playPrevious);
 $("volume").addEventListener("input", e => {
   baseVolume = clampNumber(e.target.value, 0, 1, 0.8);
-  audio.volume = musicDucked ? baseVolume * 0.22 : baseVolume;
+  audio.volume = musicDucked ? baseVolume * getDuckFactor() : baseVolume;
 });
 $("seek").addEventListener("input",e => {
   if(Number.isFinite(audio.duration)) audio.currentTime = audio.duration * Number(e.target.value) / 100;
@@ -497,7 +595,30 @@ $("seek").addEventListener("input",e => {
 audio.addEventListener("timeupdate",() => {
   $("current-time").textContent = formatTime(audio.currentTime);
   $("total-time").textContent = formatTime(audio.duration);
-  if(Number.isFinite(audio.duration) && audio.duration > 0) $("seek").value = audio.currentTime / audio.duration * 100;
+
+  if(Number.isFinite(audio.duration) && audio.duration > 0) {
+    $("seek").value = audio.currentTime / audio.duration * 100;
+
+    const settings = getAutoDJSettings();
+    const remaining = audio.duration - audio.currentTime;
+
+    const nextIsDuckJingle = autoDJEnabled &&
+      settings.mode === "duck" &&
+      jingles.length > 0 &&
+      songsSinceJingle + 1 >= settings.frequency;
+
+    if (
+      settings.transitionEnabled &&
+      !transitionFadeStarted &&
+      !jingleBusy &&
+      !nextIsDuckJingle &&
+      remaining <= settings.transitionFadeOut
+    ) {
+      transitionFadeStarted = true;
+      transitionPending = true;
+      fadeMusicVolume(0, settings.transitionFadeOut);
+    }
+  }
 });
 audio.addEventListener("play",() => { $("play-button").textContent = "Ⅱ"; renderTracks(); });
 audio.addEventListener("pause",() => { $("play-button").textContent = "▶"; renderTracks(); });
@@ -513,8 +634,8 @@ function updateJingleModeControls() {
 
   $("between-jingle-setting").classList.toggle("hidden", mode !== "between");
   $("duck-jingle-setting").classList.toggle("hidden", mode !== "duck");
+  $("duck-fade-settings").classList.toggle("hidden", mode !== "duck");
 }
-
 function renderJingleSelectors() {
   const betweenSelect = $("between-jingle-select");
   const duckSelect = $("duck-jingle-select");
@@ -755,15 +876,11 @@ async function handleAutoDJEnded() {
   jingleBusy = true;
   jingleAudio.src = trackUrl(jingle);
 
-  // Режим 1: джингл между музыкальными треками
   if (settings.mode === "between") {
     jingleAudio.onended = () => {
       jingleBusy = false;
       jingleAudio.onended = null;
-
-      if (autoDJEnabled) {
-        playTrack(nextIndex);
-      }
+      if (autoDJEnabled) playTrack(nextIndex);
     };
 
     try {
@@ -771,68 +888,53 @@ async function handleAutoDJEnded() {
     } catch (error) {
       jingleBusy = false;
       jingleAudio.onended = null;
-
-      if (autoDJEnabled) {
-        playTrack(nextIndex);
-      }
+      if (autoDJEnabled) playTrack(nextIndex);
     }
 
     return;
   }
 
-  // Режим 2: джингл поверх музыки
+  transitionPending = false;
+  transitionFadeStarted = false;
+
   playTrack(nextIndex);
   musicDucked = true;
 
-  // Начинаем Fade Out одновременно с запуском джингла
   const fadeOutPromise = fadeMusicVolume(
-    baseVolume * 0.22,
-    settings.fadeOut
+    baseVolume * getDuckFactor(),
+    settings.duckFadeOut
   );
 
-  // Обработчик устанавливается до запуска аудио
   jingleAudio.onended = async () => {
-    // Если джингл короче Fade Out, дожидаемся окончания затухания
     await fadeOutPromise;
-
     if (!jingleBusy) return;
 
     jingleBusy = false;
     jingleAudio.onended = null;
     musicDucked = false;
 
-    // Плавный Fade In после окончания джингла
     if (autoDJEnabled) {
-      await fadeMusicVolume(
-        baseVolume,
-        getAutoDJSettings().fadeIn
-      );
+      await fadeMusicVolume(baseVolume, getAutoDJSettings().duckFadeIn);
     } else {
       audio.volume = baseVolume;
     }
   };
 
   try {
-    // Джингл начинает играть сразу, не ожидая завершения Fade Out
     await jingleAudio.play();
   } catch (error) {
     await fadeOutPromise;
-
     jingleBusy = false;
     jingleAudio.onended = null;
     musicDucked = false;
-
-    await fadeMusicVolume(
-      baseVolume,
-      settings.fadeIn
-    );
+    await fadeMusicVolume(baseVolume, settings.duckFadeIn);
   }
 }
 $("autodj-start").addEventListener("click", startAutoDJ);
 $("autodj-stop").addEventListener("click", stopAutoDJ);
 $("jingle-upload").addEventListener("click", uploadJingle);
 
-["jingle-mode", "jingle-frequency", "fade-out-time", "fade-in-time"].forEach(id => {
+["jingle-mode", "jingle-frequency", "duck-fade-out", "duck-fade-in", "duck-volume-db", "transition-enabled", "transition-fade-out", "transition-fade-in"].forEach(id => {
   $(id).addEventListener("change", () => {
     if (id === "jingle-mode") updateJingleModeControls();
     saveAutoDJSettings();

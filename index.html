@@ -62,6 +62,12 @@
 <small>MP3, WAV, FLAC, M4A · до 50 МБ</small>
 <input id="audio-file" type="file" accept="audio/*,.mp3,.wav,.flac,.m4a" required>
 </label>
+<label class="file-drop" for="cover-file">
+<span class="upload-symbol">＋</span>
+<strong id="cover-file-label">Добавить обложку (необязательно)</strong>
+<small>JPG, PNG, WEBP · до 10 МБ</small>
+<input id="cover-file" type="file" accept="image/jpeg,image/png,image/webp">
+</label>
 <div class="form-grid">
 <label>Название трека<input id="track-title" type="text" placeholder="Название" required></label>
 <label>Исполнитель<input id="track-artist" type="text" placeholder="Исполнитель"></label>
@@ -120,7 +126,7 @@
     <label>Режим джинглов
       <select id="jingle-mode">
         <option value="between">Между песнями</option>
-        <option value="duck">Поверх музыки с приглушением</option>
+        <option value="duck">Поверх музыки</option>
       </select>
     </label>
 
@@ -139,14 +145,30 @@
     <label>Интервал джинглов (треков)
       <input id="jingle-frequency" type="number" min="1" max="1000" step="1" value="2">
     </label>
+    <div id="duck-fade-settings" class="radio-options hidden">
+      <label>Fade Out джингла (секунд)
+        <input id="duck-fade-out" type="number" min="0.1" max="10" step="0.1" value="2">
+      </label>
+      <label>Fade In джингла (секунд)
+        <input id="duck-fade-in" type="number" min="0.1" max="10" step="0.1" value="2">
+      </label>
+      <label>Приглушение музыки (дБ)
+        <input id="duck-volume-db" type="number" min="0" max="40" step="0.5" value="12">
+      </label>
+    </div>
 
-    <label>Fade Out (секунд)
-      <input id="fade-out-time" type="number" min="0.1" max="10" step="0.1" value="2">
-    </label>
-
-    <label>Fade In (секунд)
-      <input id="fade-in-time" type="number" min="0.1" max="10" step="0.1" value="2">
-    </label>
+    <div class="radio-options">
+      <label class="transition-toggle">
+        <span>Переходы между треками</span>
+        <input id="transition-enabled" type="checkbox">
+      </label>
+      <label>Fade Out трека (секунд)
+        <input id="transition-fade-out" type="number" min="0.1" max="10" step="0.1" value="2">
+      </label>
+      <label>Fade In трека (секунд)
+        <input id="transition-fade-in" type="number" min="0.1" max="10" step="0.1" value="2">
+      </label>
+    </div>
 </div>
 </section>
 
