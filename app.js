@@ -41,8 +41,7 @@ function getAutoDJSettings() {
   return {
     mode: $("jingle-mode").value === "duck" ? "duck" : "between",
     frequency: Math.round(clampNumber($("jingle-frequency").value, 1, 1000, 2)),
-    duckFadeOut: clampNumber($("duck-fade-out").value, 0.1, 10, 2),
-    duckFadeIn: clampNumber($("duck-fade-in").value, 0.1, 10, 2),
+    duckReturnTime: clampNumber($("duck-return-time").value, 0.1, 10, 2),
     duckDb: clampNumber($("duck-volume-db").value, 0, 40, 12),
     transitionEnabled: $("transition-enabled").checked,
     transitionFadeOut: clampNumber($("transition-fade-out").value, 0.1, 10, 2),
@@ -79,8 +78,7 @@ function loadAutoDJSettings() {
   $("jingle-mode").value = settings.mode === "duck" ? "duck" : "between";
   $("jingle-frequency").value = Math.round(clampNumber(settings.frequency, 1, 1000, 2));
 
-  $("duck-fade-out").value = clampNumber(settings.duckFadeOut ?? settings.fadeOut, 0.1, 10, 2);
-  $("duck-fade-in").value = clampNumber(settings.duckFadeIn ?? settings.fadeIn, 0.1, 10, 2);
+  $("duck-return-time").value = clampNumber(settings.duckReturnTime ?? settings.duckFadeIn, 0.1, 10, 2);
   $("duck-volume-db").value = clampNumber(settings.duckDb, 0, 40, 12);
 
   $("transition-enabled").checked = settings.transitionEnabled === true;
@@ -203,20 +201,29 @@ async function loadTracks() {
   $("library-message").textContent = "";
   renderTracks();
 }
-function playTrack(index) {
-  if (index < 0 || index >= tracks.length) return;
+function playTrack(index, options = {}) {
+  if (index < 0 || index >= tracks.length) return Promise.resolve(false);
 
   currentIndex = index;
   const t = tracks[index];
-  const useTransitionFadeIn = transitionPending;
+  const settings = getAutoDJSettings();
+
+  const useFadeIn =
+    options.fadeIn === true &&
+    autoDJEnabled &&
+    settings.transitionEnabled;
 
   transitionPending = false;
   transitionFadeStarted = false;
 
-  if (useTransitionFadeIn) {
-    audio.volume = 0;
-  } else if (!musicDucked) {
-    audio.volume = baseVolume;
+  if (!options.preserveVolume) {
+    if (useFadeIn) {
+      audio.volume = 0;
+    } else {
+      audio.volume = musicDucked
+        ? baseVolume * getDuckFactor()
+        : baseVolume;
+    }
   }
 
   audio.src = trackUrl(t);
@@ -236,16 +243,22 @@ function playTrack(index) {
   $("now-title").textContent = t.title;
   $("now-artist").textContent = t.artist || "Неизвестный исполнитель";
 
-  audio.play().then(() => {
-    if (useTransitionFadeIn) {
-      fadeMusicVolume(baseVolume, getAutoDJSettings().transitionFadeIn);
+  return audio.play().then(async () => {
+    if (useFadeIn) {
+      const target = musicDucked
+        ? baseVolume * getDuckFactor()
+        : baseVolume;
+
+      await fadeMusicVolume(target, settings.transitionFadeIn);
     }
+
+    return true;
   }).catch(err => {
     console.error(err);
     toast("Не удалось воспроизвести файл. Проверь Public bucket.");
+    return false;
   });
-}
-function playTrackById(id) {
+}function playTrackById(id) {
   const index = tracks.findIndex(t => t.id === id);
   if (index === currentIndex && !audio.paused) audio.pause();
   else playTrack(index);
@@ -592,32 +605,37 @@ $("volume").addEventListener("input", e => {
 $("seek").addEventListener("input",e => {
   if(Number.isFinite(audio.duration)) audio.currentTime = audio.duration * Number(e.target.value) / 100;
 });
-audio.addEventListener("timeupdate",() => {
+audio.addEventListener("timeupdate", () => {
   $("current-time").textContent = formatTime(audio.currentTime);
   $("total-time").textContent = formatTime(audio.duration);
 
-  if(Number.isFinite(audio.duration) && audio.duration > 0) {
-    $("seek").value = audio.currentTime / audio.duration * 100;
+  if (!Number.isFinite(audio.duration) || audio.duration <= 0) return;
 
-    const settings = getAutoDJSettings();
-    const remaining = audio.duration - audio.currentTime;
+  $("seek").value = audio.currentTime / audio.duration * 100;
 
-    const nextIsDuckJingle = autoDJEnabled &&
-      settings.mode === "duck" &&
-      jingles.length > 0 &&
-      songsSinceJingle + 1 >= settings.frequency;
+  if (!autoDJEnabled || jingleBusy) return;
 
-    if (
-      settings.transitionEnabled &&
-      !transitionFadeStarted &&
-      !jingleBusy &&
-      !nextIsDuckJingle &&
-      remaining <= settings.transitionFadeOut
-    ) {
-      transitionFadeStarted = true;
-      transitionPending = true;
-      fadeMusicVolume(0, settings.transitionFadeOut);
-    }
+  const settings = getAutoDJSettings();
+  if (!settings.transitionEnabled || transitionFadeStarted) return;
+
+  const remaining = Math.max(0, audio.duration - audio.currentTime);
+
+  const nextIsDuckJingle =
+    settings.mode === "duck" &&
+    jingles.length > 0 &&
+    songsSinceJingle + 1 >= settings.frequency;
+
+  if (nextIsDuckJingle) return;
+
+  if (remaining <= settings.transitionFadeOut) {
+    transitionFadeStarted = true;
+
+    const actualFadeDuration = Math.max(
+      0.1,
+      Math.min(settings.transitionFadeOut, remaining)
+    );
+
+    fadeMusicVolume(0, actualFadeDuration);
   }
 });
 audio.addEventListener("play",() => { $("play-button").textContent = "Ⅱ"; renderTracks(); });
@@ -787,6 +805,8 @@ function setAutoDJStatus(on) {
 }
 
 function stopAutoDJ() {
+  const wasDucked = musicDucked;
+
   autoDJEnabled = false;
   activeQueue = null;
   songsSinceJingle = 0;
@@ -796,7 +816,14 @@ function stopAutoDJ() {
   jingleBusy = false;
   musicDucked = false;
 
-  fadeMusicVolume(baseVolume, getAutoDJSettings().fadeIn);
+  if (wasDucked) {
+    fadeMusicVolume(baseVolume, getAutoDJSettings().duckReturnTime);
+  } else {
+    fadeMusicVolume(baseVolume, 0.2);
+  }
+
+  transitionPending = false;
+  transitionFadeStarted = false;
   setAutoDJStatus(false);
 }
 
@@ -821,12 +848,16 @@ function startAutoDJ() {
 
   autoDJEnabled = true;
   songsSinceJingle = 0;
+  transitionFadeStarted = false;
+  transitionPending = false;
 
   const firstIndex = tracks.findIndex(t => t.id === activeQueue[0]);
   setAutoDJStatus(true);
 
   if (firstIndex >= 0) {
-    playTrack(firstIndex);
+    playTrack(firstIndex, {
+      fadeIn: getAutoDJSettings().transitionEnabled
+    });
     toast("AutoDJ запущен");
   }
 }
@@ -861,7 +892,12 @@ async function handleAutoDJEnded() {
     songsSinceJingle >= settings.frequency;
 
   if (!shouldPlayJingle) {
-    playTrack(nextIndex);
+    if (settings.transitionEnabled) audio.volume = 0;
+
+    playTrack(nextIndex, {
+      fadeIn: settings.transitionEnabled
+    });
+
     return;
   }
 
@@ -877,10 +913,17 @@ async function handleAutoDJEnded() {
   jingleAudio.src = trackUrl(jingle);
 
   if (settings.mode === "between") {
+    if (settings.transitionEnabled) audio.volume = 0;
+
     jingleAudio.onended = () => {
       jingleBusy = false;
       jingleAudio.onended = null;
-      if (autoDJEnabled) playTrack(nextIndex);
+
+      if (autoDJEnabled) {
+        playTrack(nextIndex, {
+          fadeIn: settings.transitionEnabled
+        });
+      }
     };
 
     try {
@@ -888,25 +931,43 @@ async function handleAutoDJEnded() {
     } catch (error) {
       jingleBusy = false;
       jingleAudio.onended = null;
-      if (autoDJEnabled) playTrack(nextIndex);
+
+      if (autoDJEnabled) {
+        playTrack(nextIndex, {
+          fadeIn: settings.transitionEnabled
+        });
+      }
     }
 
     return;
   }
 
+  // Джингл поверх музыки.
+  // Приглушение происходит автоматически за 0.4 секунды.
+  musicDucked = true;
   transitionPending = false;
   transitionFadeStarted = false;
 
-  playTrack(nextIndex);
-  musicDucked = true;
+  audio.volume = baseVolume;
 
-  const fadeOutPromise = fadeMusicVolume(
-    baseVolume * getDuckFactor(),
-    settings.duckFadeOut
-  );
+  const trackStarted = await playTrack(nextIndex, {
+    preserveVolume: true
+  });
+
+  if (!trackStarted) {
+    musicDucked = false;
+    jingleBusy = false;
+    jingleAudio.onended = null;
+    return;
+  }
+
+  const duckTarget = baseVolume * getDuckFactor();
+
+  const fadeDownPromise = fadeMusicVolume(duckTarget, 0.4);
 
   jingleAudio.onended = async () => {
-    await fadeOutPromise;
+    await fadeDownPromise;
+
     if (!jingleBusy) return;
 
     jingleBusy = false;
@@ -914,7 +975,10 @@ async function handleAutoDJEnded() {
     musicDucked = false;
 
     if (autoDJEnabled) {
-      await fadeMusicVolume(baseVolume, getAutoDJSettings().duckFadeIn);
+      await fadeMusicVolume(
+        baseVolume,
+        getAutoDJSettings().duckReturnTime
+      );
     } else {
       audio.volume = baseVolume;
     }
@@ -923,18 +987,22 @@ async function handleAutoDJEnded() {
   try {
     await jingleAudio.play();
   } catch (error) {
-    await fadeOutPromise;
+    await fadeDownPromise;
+
     jingleBusy = false;
     jingleAudio.onended = null;
     musicDucked = false;
-    await fadeMusicVolume(baseVolume, settings.duckFadeIn);
+
+    await fadeMusicVolume(
+      baseVolume,
+      settings.duckReturnTime
+    );
   }
-}
-$("autodj-start").addEventListener("click", startAutoDJ);
+}$("autodj-start").addEventListener("click", startAutoDJ);
 $("autodj-stop").addEventListener("click", stopAutoDJ);
 $("jingle-upload").addEventListener("click", uploadJingle);
 
-["jingle-mode", "jingle-frequency", "duck-fade-out", "duck-fade-in", "duck-volume-db", "transition-enabled", "transition-fade-out", "transition-fade-in"].forEach(id => {
+["jingle-mode", "jingle-frequency", "duck-return-time", "duck-volume-db", "transition-enabled", "transition-fade-out", "transition-fade-in"].forEach(id => {
   $(id).addEventListener("change", () => {
     if (id === "jingle-mode") updateJingleModeControls();
     saveAutoDJSettings();
