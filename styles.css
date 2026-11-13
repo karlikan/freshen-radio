@@ -14,7 +14,6 @@
 .search-row{position:relative;margin:22px 0 12px}.search-row input{padding:14px 15px;background:#171a16}.track-list{border-top:1px solid var(--line)}.track-row{display:flex;align-items:center;gap:14px;padding:13px 9px;border-bottom:1px solid #252a23}.track-number{width:22px;text-align:center;font:10px 'DM Mono',monospace;color:#737d6d}.track-play{width:31px;height:31px;border:1px solid #3a4431;background:#20271b;color:var(--green);border-radius:7px;cursor:pointer}.track-info{min-width:0;flex:1}.track-info strong{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.track-info small{display:block;color:var(--muted);font-size:10px;margin-top:4px}.track-duration{font:10px 'DM Mono',monospace;color:var(--muted)}.delete-track{border:0;background:transparent;color:#697264;cursor:pointer;font-size:16px}.delete-track:hover{color:var(--red)}.empty-state{padding:38px 10px;text-align:center;color:var(--muted);font-size:12px}.library-message{font-size:11px;color:var(--muted);padding:10px 0}
 footer{border-top:1px solid var(--line);margin-top:55px;padding-top:20px;font:9px 'DM Mono',monospace;letter-spacing:1px;color:#788171}.modal{position:fixed;inset:0;z-index:5;background:#000b;display:grid;place-items:center;padding:20px}.modal-card{position:relative;width:min(100%,390px);background:#1a1e18;border:1px solid var(--line);border-radius:14px;padding:30px}.modal-card h2{font-size:25px;margin:10px 0}.modal-card>p{font-size:12px;color:var(--muted);line-height:1.6}.modal form{display:flex;flex-direction:column;gap:14px}.modal-close{position:absolute;right:15px;top:12px;background:none;border:0;color:var(--muted);font-size:24px;cursor:pointer}.toast{position:fixed;bottom:22px;left:50%;transform:translate(-50%,20px);background:#e5c982;color:#15190f;padding:11px 17px;border-radius:8px;font-size:11px;font-weight:700;opacity:0;pointer-events:none;transition:.25s}.toast.show{opacity:1;transform:translate(-50%,0)}
 @media(max-width:650px){.shell{padding:20px 16px}.status{display:none}.hero{padding:55px 3px 45px}.hero-orb{width:125px;height:125px;margin:0 7px}.orb-core{width:70px;height:70px;font-size:17px}.orb-ring{inset:10px}.orb-caption{font-size:6px}.hero h1{font-size:48px;letter-spacing:-3px}.hero p{font-size:12px}.player{padding:15px;gap:14px}.player-art{width:82px;height:100px;font-size:20px}.player-main h2{font-size:14px}.controls{gap:10px}.volume-icon,.controls input{display:none}.form-grid{grid-template-columns:1fr}footer{gap:12px;align-items:flex-start;flex-direction:column}}
-
 /* Playlist manager */
 .playlist-section{padding:22px;margin-top:28px}
 .playlist-section .section-heading{margin-bottom:16px}
@@ -143,46 +142,35 @@ body { background: #090909; }
     transition-duration: .01ms !important;
   }
 }
-
-
 /* ==================================================
    FRESHEN MUSIC RADIO 0.8
    PREMIUM BLACK / GOLD / WHITE
    ================================================== */
-
 :root {
     color-scheme: dark;
-
     --bg: #070707;
     --bg-soft: #0B0B0B;
     --panel: #111111;
     --panel-light: #171717;
     --panel-hover: #1D1D1D;
-
     --gold: #D8B65C;
     --gold-light: #F0D98D;
     --gold-dim: #A88B43;
-
     --text: #F4F4F4;
     --muted: #929292;
     --line: rgba(255,255,255,.09);
     --gold-line: rgba(216,182,92,.28);
-
     --green: #D8B65C;
 }
-
 /* Базовая геометрия */
-
 * {
     box-sizing: border-box;
 }
-
 html {
     min-height: 100%;
     background: var(--bg);
     scroll-behavior: smooth;
 }
-
 body {
     margin: 0;
     min-height: 100vh;
@@ -192,9 +180,7 @@ body {
     font-family: Manrope, Arial, sans-serif;
     position: relative;
 }
-
 /* Атмосферное свечение */
-
 .ambient {
     position: fixed !important;
     width: 650px !important;
@@ -211,7 +197,6 @@ body {
     z-index: 0 !important;
     animation: ambientMove 28s ease-in-out infinite alternate;
 }
-
 body::before {
     content: "";
     position: fixed;
@@ -226,19 +211,15 @@ body::before {
     z-index: 0;
     animation: ambientMoveTwo 34s ease-in-out infinite alternate;
 }
-
 @keyframes ambientMove {
     from { transform: translate3d(-25px, 0, 0) scale(1); }
     to { transform: translate3d(-160px, 180px, 0) scale(1.25); }
 }
-
 @keyframes ambientMoveTwo {
     from { transform: translate3d(0, 0, 0); }
     to { transform: translate3d(130px, -100px, 0); }
 }
-
 /* Основной контейнер */
-
 .shell {
     position: relative;
     z-index: 1;
@@ -246,14 +227,11 @@ body::before {
     margin: 0 auto;
     padding: 30px 0 26px;
 }
-
 /* Верхняя панель */
-
 .topbar {
     min-height: 54px;
     gap: 20px;
 }
-
 .brand {
     gap: 13px;
     color: var(--text) !important;
@@ -262,11 +240,9 @@ body::before {
     font-weight: 800;
     letter-spacing: 1.2px;
 }
-
 .brand b {
     color: var(--gold) !important;
 }
-
 .brand-mark {
     width: 44px;
     height: 44px;
@@ -279,24 +255,19 @@ body::before {
     color: var(--gold) !important;
     font-size: 24px;
 }
-
 .brand small {
     color: var(--muted);
     letter-spacing: 2px;
 }
-
 .top-actions {
     gap: 12px;
     flex-wrap: wrap;
     justify-content: flex-end;
 }
-
 .status {
     color: var(--muted);
 }
-
 /* Кнопки */
-
 .button {
     min-height: 39px;
     padding: 10px 16px;
@@ -309,50 +280,40 @@ body::before {
     cursor: pointer;
     transition: background .2s ease, border-color .2s ease, color .2s ease;
 }
-
 .button:hover {
     border-color: var(--gold);
     color: var(--gold);
     background: #1C1C1C;
 }
-
 .button-primary {
     background: var(--gold);
     color: #090909;
     border-color: var(--gold);
 }
-
 .button-primary:hover {
     background: var(--gold-light);
     color: #090909;
     border-color: var(--gold-light);
 }
-
 .button:disabled {
     opacity: .45;
     cursor: not-allowed;
 }
-
 .button-quiet {
     background: rgba(255,255,255,.025);
 }
-
 .hidden {
     display: none !important;
 }
-
 /* Заголовки и подписи */
-
 .eyebrow {
     color: var(--gold);
     font: 10px 'DM Mono', monospace;
     letter-spacing: 2.2px;
 }
-
 h1, h2, h3, h4 {
     color: var(--text);
 }
-
 .hero h1 {
     font-size: clamp(44px, 6vw, 76px);
     line-height: 1.04;
@@ -360,21 +321,17 @@ h1, h2, h3, h4 {
     font-weight: 800;
     margin: 20px 0 18px;
 }
-
 .hero h1 em {
     color: var(--gold);
     font-style: normal;
 }
-
 .hero p {
     max-width: 440px;
     color: var(--muted);
     font-size: 14px;
     line-height: 1.85;
 }
-
 /* Первый экран */
-
 .hero {
     display: flex;
     align-items: center;
@@ -382,11 +339,9 @@ h1, h2, h3, h4 {
     gap: 40px;
     padding: 76px 6px 68px;
 }
-
 .hero > div:first-child {
     min-width: 0;
 }
-
 .hero-orb {
     width: 210px;
     height: 210px;
@@ -396,32 +351,25 @@ h1, h2, h3, h4 {
     background: radial-gradient(circle, rgba(216,182,92,.07), transparent 68%);
     box-shadow: 0 0 70px rgba(216,182,92,.055);
 }
-
 .orb-ring {
     border-color: rgba(216,182,92,.45);
 }
-
 .orb-core {
     background: radial-gradient(circle at 35% 30%, #F0D98D, #B18F43 75%, #705A2D);
     color: #090909;
     box-shadow: 0 0 45px rgba(216,182,92,.16);
 }
-
 .orb-caption {
     color: var(--muted);
 }
-
 /* Панели */
-
 .panel {
     background: linear-gradient(145deg, #151515, #101010) !important;
     border: 1px solid var(--line);
     border-radius: 15px;
     box-shadow: 0 18px 60px rgba(0,0,0,.18);
 }
-
 /* Плеер */
-
 .player {
     display: flex;
     align-items: center;
@@ -429,7 +377,6 @@ h1, h2, h3, h4 {
     padding: 25px;
     margin-bottom: 58px;
 }
-
 .player-art {
     width: 132px;
     height: 132px;
@@ -440,16 +387,13 @@ h1, h2, h3, h4 {
     color: var(--gold);
     box-shadow: inset 0 0 35px rgba(216,182,92,.055);
 }
-
 .equalizer i {
     background: var(--gold);
 }
-
 .player-main {
     flex: 1;
     min-width: 0;
 }
-
 .player-main h2 {
     color: var(--text);
     font-size: 19px;
@@ -457,25 +401,20 @@ h1, h2, h3, h4 {
     overflow: hidden;
     text-overflow: ellipsis;
 }
-
 .player-main p {
     color: var(--muted);
 }
-
 .progress-row {
     gap: 12px;
 }
-
 input[type="range"] {
     accent-color: var(--gold);
     cursor: pointer;
 }
-
 .controls {
     gap: 14px;
     flex-wrap: wrap;
 }
-
 .control-button,
 .play-button {
     display: inline-grid;
@@ -488,12 +427,10 @@ input[type="range"] {
     color: var(--text);
     cursor: pointer;
 }
-
 .control-button:hover {
     border-color: var(--gold);
     color: var(--gold);
 }
-
 .play-button {
     width: 42px;
     height: 42px;
@@ -501,21 +438,16 @@ input[type="range"] {
     color: #080808;
     border: 0;
 }
-
 .play-button:hover {
     background: var(--gold-light);
 }
-
 .volume-icon {
     color: var(--muted);
 }
-
 /* Разделы */
-
 .library-section {
     min-width: 0;
 }
-
 .section-heading {
     display: flex;
     align-items: center;
@@ -523,64 +455,50 @@ input[type="range"] {
     gap: 18px;
     margin-bottom: 20px;
 }
-
 .section-heading h2 {
     margin: 7px 0 0;
     font-size: 25px;
     letter-spacing: -.5px;
 }
-
 .section-heading h2 span {
     color: var(--gold);
 }
-
 /* Админ-панель */
-
 .admin-panel {
     padding: 23px;
     margin-bottom: 20px;
 }
-
 .admin-heading {
     gap: 14px;
 }
-
 .admin-tag {
     color: var(--gold);
     border: 1px solid var(--gold-line);
     background: rgba(216,182,92,.045);
     border-radius: 6px;
 }
-
 /* Загрузка файлов */
-
 .file-drop {
     border: 1px dashed rgba(216,182,92,.4);
     border-radius: 10px;
     background: rgba(255,255,255,.018);
     transition: border-color .2s ease, background .2s ease;
 }
-
 .file-drop:hover {
     border-color: var(--gold);
     background: rgba(216,182,92,.035);
 }
-
 .upload-symbol {
     color: var(--gold);
 }
-
 .file-drop small {
     color: var(--muted);
 }
-
 /* Поля ввода */
-
 .form-grid label,
 .modal label {
     color: var(--muted);
 }
-
 .form-grid input,
 .modal input,
 .search-row input,
@@ -597,35 +515,27 @@ input[type="range"] {
     font-size: 12px;
     transition: border-color .2s ease;
 }
-
 .form-grid input:focus,
 .modal input:focus,
 .search-row input:focus,
 .playlist-create input:focus {
     border-color: var(--gold);
 }
-
 .form-message {
     color: var(--gold);
 }
-
 /* Поиск */
-
 .search-row {
     margin: 22px 0 14px;
 }
-
 .search-row input {
     padding: 15px;
     background: #101010;
 }
-
 /* Список музыки */
-
 .track-list {
     border-top: 1px solid var(--line);
 }
-
 .track-row {
     display: flex;
     align-items: center;
@@ -635,16 +545,13 @@ input[type="range"] {
     border-bottom: 1px solid rgba(255,255,255,.07);
     transition: background .2s ease;
 }
-
 .track-row:hover {
     background: rgba(255,255,255,.025);
 }
-
 .track-number {
     flex: 0 0 22px;
     color: var(--muted);
 }
-
 .track-play {
     flex: 0 0 34px;
     width: 34px;
@@ -655,12 +562,10 @@ input[type="range"] {
     color: var(--gold);
     cursor: pointer;
 }
-
 .track-info {
     flex: 1;
     min-width: 0;
 }
-
 .track-info strong {
     display: block;
     overflow: hidden;
@@ -669,61 +574,49 @@ input[type="range"] {
     color: var(--text);
     font-size: 12px;
 }
-
 .track-info small {
     color: var(--muted);
 }
-
 .track-duration {
     flex: 0 0 auto;
     color: var(--muted);
 }
-
 .delete-track {
     flex: 0 0 auto;
     background: transparent;
     color: var(--muted);
 }
-
 .delete-track:hover {
     color: #FF7777;
 }
-
 .empty-state {
     padding: 38px 12px;
     color: var(--muted);
     text-align: center;
 }
-
 .library-message {
     color: var(--muted);
 }
-
 /* Плейлисты */
-
 .playlist-section {
     padding: 24px;
     margin-top: 30px;
 }
-
 .playlist-layout {
     display: grid;
     grid-template-columns: minmax(190px, .72fr) minmax(0, 1.8fr);
     gap: 22px;
 }
-
 .playlist-sidebar {
     min-width: 0;
     border-right: 1px solid var(--line);
     padding-right: 18px;
 }
-
 .playlist-list {
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
-
 .playlist-item {
     width: 100%;
     min-width: 0;
@@ -737,18 +630,15 @@ input[type="range"] {
     cursor: pointer;
     transition: .2s ease;
 }
-
 .playlist-item:hover,
 .playlist-item.active {
     color: var(--gold);
     border-color: var(--gold-line);
     background: #1A1A1A;
 }
-
 .playlist-content {
     min-width: 0;
 }
-
 .playlist-toolbar {
     display: flex;
     align-items: center;
@@ -756,28 +646,23 @@ input[type="range"] {
     flex-wrap: wrap;
     gap: 12px;
 }
-
 .playlist-toolbar h3 {
     min-width: 0;
     overflow-wrap: anywhere;
     color: var(--text);
 }
-
 .playlist-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
 }
-
 .playlist-hint {
     color: var(--muted);
     line-height: 1.6;
 }
-
 .playlist-track-list {
     border-top: 1px solid var(--line);
 }
-
 .playlist-track-row {
     display: flex;
     align-items: center;
@@ -786,7 +671,6 @@ input[type="range"] {
     padding: 11px 5px;
     border-bottom: 1px solid rgba(255,255,255,.07);
 }
-
 .mini-action {
     border: 1px solid var(--line);
     background: #191919;
@@ -796,13 +680,10 @@ input[type="range"] {
     height: 28px;
     cursor: pointer;
 }
-
 .mini-action:hover {
     border-color: var(--gold);
 }
-
 /* AutoDJ и джинглы */
-
 .autodj-panel,
 .jingle-panel,
 #autodj-panel,
@@ -812,26 +693,21 @@ input[type="range"] {
     border-radius: 13px;
     color: var(--text);
 }
-
 .autodj-panel,
 .jingle-panel {
     padding: 22px;
     margin-top: 22px;
 }
-
 #jingle-admin {
     padding: 20px;
     margin: 18px 0;
 }
-
 /* Модальное окно */
-
 .modal {
     background: rgba(0,0,0,.78);
     backdrop-filter: blur(12px);
     padding: 20px;
 }
-
 .modal-card {
     width: min(100%, 410px);
     max-height: calc(100vh - 40px);
@@ -842,27 +718,21 @@ input[type="range"] {
     box-shadow: 0 25px 90px rgba(0,0,0,.6);
     padding: 30px;
 }
-
 .modal-card h2 {
     color: var(--gold);
 }
-
 .modal-card > p {
     color: var(--muted);
 }
-
 .modal-close {
     color: var(--muted);
 }
-
 .modal form {
     display: flex;
     flex-direction: column;
     gap: 14px;
 }
-
 /* Уведомления */
-
 .toast {
     max-width: calc(100vw - 32px);
     background: var(--gold);
@@ -870,9 +740,7 @@ input[type="range"] {
     border-radius: 9px;
     box-shadow: 0 12px 40px rgba(0,0,0,.35);
 }
-
 /* Подвал */
-
 footer {
     display: flex;
     justify-content: space-between;
@@ -883,177 +751,139 @@ footer {
     padding-top: 20px;
     color: var(--muted);
 }
-
 /* Адаптивность: планшеты */
-
 @media (max-width: 850px) {
     .shell {
         width: min(100% - 36px, 720px);
     }
-
     .hero {
         padding: 58px 4px;
         gap: 20px;
     }
-
     .hero-orb {
         margin-right: 12px;
         transform: scale(.86);
     }
-
     .playlist-layout {
         grid-template-columns: minmax(150px, .7fr) minmax(0, 1.5fr);
         gap: 14px;
     }
 }
-
 /* Адаптивность: телефоны */
-
 @media (max-width: 650px) {
     .shell {
         width: calc(100% - 30px);
         padding-top: 18px;
     }
-
     .topbar {
         align-items: flex-start;
         flex-wrap: wrap;
     }
-
     .top-actions {
         width: 100%;
         justify-content: flex-start;
     }
-
     .hero {
         padding: 48px 2px 42px;
     }
-
     .hero h1 {
         font-size: clamp(40px, 10vw, 54px);
         letter-spacing: -2.5px;
     }
-
     .hero p {
         font-size: 12px;
     }
-
     .hero-orb {
         display: none;
     }
-
     .player {
         padding: 15px;
         gap: 13px;
         align-items: flex-start;
         margin-bottom: 42px;
     }
-
     .player-art {
         width: 76px;
         height: 90px;
         flex: 0 0 76px;
         font-size: 19px;
     }
-
     .player-main h2 {
         font-size: 14px;
         white-space: normal;
         overflow-wrap: anywhere;
     }
-
     .controls {
         gap: 9px;
     }
-
     .volume-icon,
     .controls input {
         display: none;
     }
-
     .section-heading {
         align-items: flex-start;
     }
-
     .section-heading h2 {
         font-size: 21px;
     }
-
     .form-grid {
         grid-template-columns: 1fr;
     }
-
     .playlist-section {
         padding: 16px;
     }
-
     .playlist-layout {
         grid-template-columns: minmax(0, 1fr);
     }
-
     .playlist-sidebar {
         border-right: 0;
         border-bottom: 1px solid var(--line);
         padding: 0 0 14px;
     }
-
     .playlist-list {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
-
     .playlist-toolbar {
         align-items: flex-start;
         flex-direction: column;
     }
-
     .playlist-create {
         flex-direction: column;
     }
-
     .admin-panel {
         padding: 16px;
     }
-
     .track-row {
         gap: 9px;
         padding: 12px 5px;
     }
-
     .track-duration {
         font-size: 9px;
     }
-
     footer {
         flex-direction: column;
         align-items: flex-start;
     }
 }
-
 /* Очень узкие экраны */
-
 @media (max-width: 380px) {
     .player {
         flex-direction: column;
     }
-
     .player-art {
         width: 100%;
         height: 85px;
         flex-basis: 85px;
     }
-
     .playlist-list {
         grid-template-columns: 1fr;
     }
-
     .section-heading {
         flex-wrap: wrap;
     }
 }
-
 /* Анимации без рывков */
-
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -1064,20 +894,15 @@ footer {
         transition-duration: .01ms !important;
     }
 }
-
 /* ===== END FRESHEN MUSIC RADIO 0.8 ===== */
-
 /* FRESHEN MUSIC RADIO 0.9 - AUTODJ SETTINGS */
-
 .radio-options {
     align-items: flex-end;
 }
-
 .radio-options label {
     min-width: 170px;
     flex: 1 1 170px;
 }
-
 .radio-options select,
 .radio-options input[type="number"] {
     width: 100%;
@@ -1091,22 +916,18 @@ footer {
     font-size: 12px;
     outline: none;
 }
-
 .radio-options select:focus,
 .radio-options input[type="number"]:focus {
     border-color: #d6b56d;
 }
 /* FRESHEN MUSIC RADIO 1.0 - AUTODJ SETTINGS */
-
 .radio-options {
     align-items: flex-end;
 }
-
 .radio-options label {
     min-width: 170px;
     flex: 1 1 170px;
 }
-
 .radio-options select,
 .radio-options input[type="number"] {
     width: 100%;
@@ -1120,13 +941,11 @@ footer {
     font-size: 12px;
     outline: none;
 }
-
 .radio-options select:focus,
 .radio-options input[type="number"]:focus {
     border-color: #d8b65c;
 }
 /* FRESHEN MUSIC RADIO 1.1 */
-
 .brand-logo {
     width: 54px;
     height: 54px;
@@ -1134,48 +953,39 @@ footer {
     object-fit: contain;
     display: block;
 }
-
 .brand {
     gap: 15px;
 }
-
 .hero h1 {
     font-size: clamp(42px, 6vw, 70px);
     letter-spacing: -3px;
     line-height: 1.02;
 }
-
 .hero p {
     max-width: 560px;
     line-height: 1.9;
 }
-
 .radio-options select {
     min-width: 230px;
     max-width: 100%;
     font: 11px Manrope, Arial, sans-serif;
 }
-
 .radio-options label {
     min-width: 210px;
 }
-
 @media(max-width:650px) {
     .brand-logo {
         width: 46px;
         height: 46px;
         flex-basis: 46px;
     }
-
     .hero h1 {
         font-size: 39px;
         letter-spacing: -2px;
     }
-
     .hero p {
         max-width: 100%;
     }
-
     .radio-options label,
     .radio-options select {
         width: 100%;
@@ -1244,4 +1054,102 @@ footer {
 }
 @media (prefers-reduced-motion: reduce) {
     .orb-logo, .orb-glow { animation: none !important; }
+}
+/* ==================================================
+   FRESHEN MUSIC RADIO 2.0 - GLOBAL ON-AIR CONTROL
+   ================================================== */
+/* Индикатор эфира */
+.air-status {
+    display: inline-block;
+    margin-left: 10px;
+    padding: 3px 7px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    color: var(--muted);
+    font: 9px 'DM Mono', monospace;
+    letter-spacing: 1.5px;
+    vertical-align: 1px;
+}
+.air-status.live,
+.air-badge.live {
+    color: #0b0b0b;
+    background: var(--gold);
+    border-color: var(--gold);
+}
+.air-status.live {
+    animation: airPulse 2.2s ease-in-out infinite;
+}
+@keyframes airPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(216,182,92,.0); }
+    50% { box-shadow: 0 0 14px 0 rgba(216,182,92,.45); }
+}
+.listen-hint {
+    margin: 14px 0 0 !important;
+    font-size: 10px !important;
+    line-height: 1.6;
+    color: var(--muted);
+}
+.live-count {
+    font: 10px 'DM Mono', monospace;
+    letter-spacing: 1px;
+    color: var(--gold);
+    padding-bottom: 12px;
+}
+/* Ползунок перемотки у посетителей только показывает прогресс */
+#seek:disabled {
+    opacity: .55;
+    cursor: default;
+}
+/* Медиатека: подсветка трека в эфире, у посетителей без кнопки ▶ */
+.track-onair {
+    flex: 0 0 34px;
+    width: 34px;
+    text-align: center;
+    color: var(--gold);
+    font-size: 12px;
+}
+.track-row.on-air {
+    background: rgba(216,182,92,.07);
+}
+.track-row.on-air .track-info strong,
+.track-row.on-air .track-info small {
+    color: var(--gold);
+}
+/* Настройки AutoDJ: переключатель переходов и отдельные блоки без двойных линий */
+.radio-options + .radio-options {
+    margin-top: 0;
+}
+.radio-options label.transition-toggle {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    min-height: 41px;
+    padding: 0 14px;
+    border: 1px solid rgba(216,182,92,.28);
+    border-radius: 8px;
+    background: #090909;
+    cursor: pointer;
+}
+.transition-toggle input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--gold);
+    cursor: pointer;
+}
+.radio-options > .button {
+    flex: 0 0 auto;
+}
+/* Мобильные: громкость нужна всем (админу это общая громкость эфира) */
+@media (max-width: 650px) {
+    .controls .volume-icon {
+        display: inline;
+    }
+    .controls input {
+        display: block;
+        width: 80px;
+    }
+    .live-count {
+        padding-bottom: 0;
+    }
 }

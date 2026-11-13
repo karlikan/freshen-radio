@@ -20,39 +20,54 @@
 <button id="logout-button" class="button button-quiet hidden">Выйти</button>
 </div>
 </header>
-
 <section class="hero">
 <div>
-
-<h1>FRESHEN MUSIC<br><em>RADIO</em></h1>
+<h1>FRESHEN MUSIC
+<em>RADIO</em></h1>
 <p>Независимое интернет-радио, созданное музыкантами. Мы тщательно отбираем музыку, открываем интересные имена и оставляем за бортом хайп ради хайпа. Только то, что действительно стоит слушать.</p>
 </div>
 <div class="hero-orb"><div class="orb-glow"></div><img class="orb-logo" src="Freshen Logo tpr.png" alt="Freshen Music Radio"></div>
 </section>
-
 <section class="player panel">
 <div class="player-art"><img class="player-art-logo" src="Freshen Logo.png" alt="Freshen Music Radio"></div>
 <div class="player-main">
-<div class="eyebrow">NOW PLAYING</div>
-<h2 id="now-title">Ничего не воспроизводится</h2>
-<p id="now-artist">Выбери трек из библиотеки</p>
-<div class="progress-row"><span id="current-time">0:00</span><input id="seek" type="range" min="0" max="100" value="0"><span id="total-time">0:00</span></div>
+<div class="eyebrow">NOW PLAYING <span id="air-status" class="air-status">OFF AIR</span></div>
+<h2 id="now-title">Подключаем эфир...</h2>
+<p id="now-artist">FRESHEN MUSIC RADIO</p>
+<div class="progress-row"><span id="current-time">0:00</span><input id="seek" type="range" min="0" max="100" step="0.1" value="0" disabled><span id="total-time">0:00</span></div>
 <div class="controls">
-<button id="prev-button" class="control-button">|◀</button>
-<button id="play-button" class="play-button">▶</button>
-<button id="next-button" class="control-button">▶|</button>
-<span class="volume-icon">VOL</span><input id="volume" type="range" min="0" max="1" step="0.01" value="0.8">
+<button id="prev-button" class="control-button hidden" title="Предыдущий трек (для всех)">|◀</button>
+<button id="play-button" class="play-button" title="Слушать эфир">▶</button>
+<button id="next-button" class="control-button hidden" title="Следующий трек (для всех)">▶|</button>
+<span id="volume-label" class="volume-icon">VOL</span><input id="volume" type="range" min="0" max="1" step="0.01" value="1">
 </div>
+<p id="listen-hint" class="listen-hint"></p>
 </div>
 <audio id="audio-player" preload="metadata"></audio>
 </section>
-
+<section id="onair-panel" class="radio-tools panel hidden">
+  <div class="section-heading">
+    <div><div class="eyebrow">ADMIN ACCESS</div><h2>Управление эфиром</h2></div>
+    <span id="air-badge" class="admin-tag air-badge">OFF AIR</span>
+  </div>
+  <p class="radio-description">Всё, что ты делаешь здесь и в плеере выше, мгновенно применяется у всех слушателей: старт и стоп эфира, громкость, перемотка, переключение треков и джинглы. Эта вкладка должна оставаться открытой, пока идёт эфир: она сама включает следующий трек.</p>
+  <div class="radio-controls">
+    <button id="onair-toggle" class="button button-primary" type="button">▶ Включить эфир</button>
+    <button id="monitor-toggle" class="button button-quiet" type="button">🔊 Мониторинг: вкл</button>
+    <span id="listeners-count" class="live-count">СЛУШАТЕЛИ: 0</span>
+  </div>
+  <div class="radio-options">
+    <label>Джингл в эфир
+      <select id="onair-jingle-select"><option value="">Нет загруженных джинглов</option></select>
+    </label>
+    <button id="onair-jingle-button" class="button button-primary" type="button">Пустить джингл</button>
+  </div>
+</section>
 <section class="library-section">
 <div class="section-heading">
 <div><h2>Медиатека <span id="track-count">0</span></h2></div>
 <button id="refresh-button" class="button button-quiet">↻ Обновить</button>
 </div>
-
 <div id="admin-panel" class="panel admin-panel hidden">
 <div class="admin-heading"><div><div class="eyebrow">ADMIN ACCESS</div><h3>Добавить музыку</h3></div><span class="admin-tag">ADMIN</span></div>
 <form id="upload-form">
@@ -76,12 +91,10 @@
 <p id="upload-message" class="form-message"></p>
 </form>
 </div>
-
 <div class="search-row"><input id="search-input" type="search" placeholder="Поиск по названию или исполнителю..."></div>
 <div id="library-list" class="track-list"><div class="empty-state">Загружаем медиатеку...</div></div>
 <div id="library-message" class="library-message"></div>
-
-<section class="playlist-section panel">
+<section id="playlist-section" class="playlist-section panel hidden">
   <div class="section-heading">
     <div><h2>Плейлисты</h2></div>
     <span class="admin-tag">CLOUD</span>
@@ -100,7 +113,7 @@
       <div class="playlist-toolbar">
         <h3 id="selected-playlist-name">Выбери плейлист</h3>
         <div class="playlist-actions">
-          <button id="playlist-play" class="button button-primary" disabled>▶ Слушать</button>
+          <button id="playlist-play" class="button button-primary" disabled>▶ В эфир</button>
           <button id="playlist-delete" class="button button-quiet hidden">Удалить</button>
         </div>
       </div>
@@ -110,13 +123,12 @@
   </div>
 </section>
 </section>
-
-<section class="radio-tools panel">
+<section id="autodj-section" class="radio-tools panel hidden">
   <div class="section-heading">
     <div><h2>AutoDJ</h2></div>
     <span class="admin-tag">BROWSER MODE</span>
   </div>
-  <p class="radio-description">Автоматическое воспроизведение выбранного плейлиста. Браузер должен оставаться открытым.</p>
+  <p class="radio-description">Автоматическое воспроизведение выбранного плейлиста для всех слушателей. Вкладка администратора должна оставаться открытой.</p>
   <div class="radio-controls">
     <button id="autodj-start" class="button button-primary">▶ Запустить AutoDJ</button>
     <button id="autodj-stop" class="button button-quiet">Остановить</button>
@@ -129,52 +141,47 @@
         <option value="duck">Поверх музыки</option>
       </select>
     </label>
-
     <label id="between-jingle-setting">Джингл между песнями
       <select id="between-jingle-select">
         <option value="">Загрузка джинглов...</option>
       </select>
     </label>
-
     <label id="duck-jingle-setting" class="hidden">Джингл с приглушением
       <select id="duck-jingle-select">
         <option value="">Загрузка джинглов...</option>
       </select>
     </label>
-
     <label>Интервал джинглов (треков)
       <input id="jingle-frequency" type="number" min="1" max="1000" step="1" value="2">
     </label>
-    <div id="duck-fade-settings" class="radio-options hidden">
-      <label>Приглушение музыки (дБ)
-        <input id="duck-volume-db" type="number" min="0" max="40" step="0.5" value="12">
-      </label>
-      <label>Время возврата громкости (секунд)
-        <input id="duck-return-time" type="number" min="0.1" max="10" step="0.1" value="2">
-      </label>
-    </div>
-
-    <div class="radio-options">
-      <label class="transition-toggle">
-        <span>Переходы между треками</span>
-        <input id="transition-enabled" type="checkbox">
-      </label>
-      <label>Fade Out трека (секунд)
-        <input id="transition-fade-out" type="number" min="0.1" max="10" step="0.1" value="2">
-      </label>
-      <label>Fade In трека (секунд)
-        <input id="transition-fade-in" type="number" min="0.1" max="10" step="0.1" value="2">
-      </label>
-    </div>
-</div>
+  </div>
+  <div id="duck-fade-settings" class="radio-options hidden">
+    <label>Приглушение музыки (дБ)
+      <input id="duck-volume-db" type="number" min="0" max="40" step="0.5" value="12">
+    </label>
+    <label>Время возврата громкости (секунд)
+      <input id="duck-return-time" type="number" min="0.1" max="10" step="0.1" value="2">
+    </label>
+  </div>
+  <div class="radio-options">
+    <label class="transition-toggle">
+      <span>Переходы между треками</span>
+      <input id="transition-enabled" type="checkbox">
+    </label>
+    <label>Fade Out трека (секунд)
+      <input id="transition-fade-out" type="number" min="0.1" max="10" step="0.1" value="2">
+    </label>
+    <label>Fade In трека (секунд)
+      <input id="transition-fade-in" type="number" min="0.1" max="10" step="0.1" value="2">
+    </label>
+  </div>
 </section>
-
-<section class="radio-tools panel">
+<section id="jingle-section" class="radio-tools panel hidden">
   <div class="section-heading">
     <div><h2>Джинглы</h2></div>
     <span id="jingle-count" class="admin-tag">0 JINGLES</span>
   </div>
-  <p class="radio-description">Отдельная коллекция радиозаставок. Они не смешиваются с музыкальной медиатекой.</p>
+  <p class="radio-description">Отдельная коллекция радиозаставок. Они не смешиваются с музыкальной медиатекой. Кнопка ▶ пускает джингл в прямой эфир для всех.</p>
   <div id="jingle-admin" class="hidden">
     <label class="file-drop jingle-drop" for="jingle-file">
       <span class="upload-symbol">＋</span>
@@ -192,15 +199,14 @@
     <div class="empty-state">Джинглов пока нет.</div>
   </div>
 </section>
-<footer><span>FRESHEN MUSIC RADIO © 2026</span><span>FRESHEN MUSIC RADIO · Версия 1.1</span></footer>
+<footer><span>FRESHEN MUSIC RADIO © 2026</span><span>FRESHEN MUSIC RADIO · Версия 2.0</span></footer>
 </main>
-
 <div id="login-modal" class="modal hidden">
 <div class="modal-card">
 <button id="login-close" class="modal-close">×</button>
 <div class="eyebrow">ADMIN ACCESS</div>
 <h2>Вход в панель</h2>
-<p>Авторизуйся, чтобы загружать и удалять треки.</p>
+<p>Авторизуйся, чтобы управлять эфиром, загружать и удалять треки.</p>
 <form id="login-form">
 <label>Email<input id="login-email" type="email" required></label>
 <label>Пароль<input id="login-password" type="password" required></label>
@@ -212,5 +218,3 @@
 <div id="toast" class="toast"></div>
 </body>
 </html>
-
-
